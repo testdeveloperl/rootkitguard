@@ -28288,3 +28288,236 @@
 2026-04-24 17:26:19  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
 2026-05-11 21:41:25  INFO      process_monitor — Модель ProcessMonitor загружена
 2026-05-11 21:41:29  INFO      api — ML-модели загружены
+2026-05-14 11:56:18  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-15 15:22:02  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-15 15:28:32  INFO      api — ML-модели загружены
+2026-05-15 15:34:24  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 15:34:24  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-15 15:35:23  ERROR     gui — Scan error: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 15:35:27  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 15:35:27  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-15 15:50:18  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-15 15:50:44  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 15:50:44  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-15 15:50:51  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 15:50:51  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-15 16:14:31  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-15 16:14:42  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-15 16:19:58  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-15 16:20:01  INFO      gui — Авто-сканирование при запуске...
+2026-05-15 16:20:01  INFO      rootkit_checker — RootkitChecker init (root=False)
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка скрытых процессов...
+2026-05-15 16:20:01  INFO      rootkit_checker — Скрытые процессы не обнаружены
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка «Скрытые процессы»: ЧИСТО
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка модулей ядра...
+2026-05-15 16:20:01  INFO      rootkit_checker — Модули ядра чисты (67 проверено)
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка «Модули ядра»: ЧИСТО
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка /etc/ld.so.preload...
+2026-05-15 16:20:01  INFO      rootkit_checker — /etc/ld.so.preload не существует (норма)
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка «LD_PRELOAD инъекция»: ЧИСТО
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка /proc/net/tcp...
+2026-05-15 16:20:01  INFO      rootkit_checker — Подозрительных портов не обнаружено
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка «Подозрительные порты»: ЧИСТО
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка системных файлов...
+2026-05-15 16:20:01  INFO      rootkit_checker — Системные файлы в порядке (7 проверено)
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка «Системные файлы»: ЧИСТО
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
+2026-05-15 16:20:01  INFO      rootkit_checker — Проверка «Привилегии»: ЧИСТО
+2026-05-15 16:20:01  INFO      rootkit_checker — Rootkit scan завершён: угроза=ЧИСТАЯ, находок=0, пройдено=6/6
+2026-05-15 16:20:23  ERROR     gui — Scan error: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 16:20:23  ERROR     gui — Scan error: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 16:20:23  ERROR     gui — Scan error: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 16:20:35  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 16:20:35  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-15 16:20:35  ERROR     gui — Scan error: '_tkinter.tkapp' object has no attribute '_prev_scan'
+2026-05-15 16:20:46  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-15 16:20:46  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-15 16:20:46  ERROR     gui — Scan error: '_tkinter.tkapp' object has no attribute '_prev_scan'
+2026-05-18 16:29:05  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-18 16:29:09  INFO      gui — Авто-сканирование при запуске...
+2026-05-18 16:29:09  INFO      rootkit_checker — RootkitChecker init (root=False)
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка скрытых процессов...
+2026-05-18 16:29:09  INFO      rootkit_checker — Скрытые процессы не обнаружены
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка «Скрытые процессы»: ЧИСТО
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка модулей ядра...
+2026-05-18 16:29:09  INFO      rootkit_checker — Модули ядра чисты (66 проверено)
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка «Модули ядра»: ЧИСТО
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка /etc/ld.so.preload...
+2026-05-18 16:29:09  INFO      rootkit_checker — /etc/ld.so.preload не существует (норма)
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка «LD_PRELOAD инъекция»: ЧИСТО
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка /proc/net/tcp...
+2026-05-18 16:29:09  INFO      rootkit_checker — Подозрительных портов не обнаружено
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка «Подозрительные порты»: ЧИСТО
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка системных файлов...
+2026-05-18 16:29:09  INFO      rootkit_checker — Системные файлы в порядке (7 проверено)
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка «Системные файлы»: ЧИСТО
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
+2026-05-18 16:29:09  INFO      rootkit_checker — Проверка «Привилегии»: ЧИСТО
+2026-05-18 16:29:09  INFO      rootkit_checker — Rootkit scan завершён: угроза=ЧИСТАЯ, находок=0, пройдено=6/6
+2026-05-18 16:29:19  INFO      api — ML-модели загружены
+2026-05-18 16:49:45  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-18 16:49:49  INFO      gui — Авто-сканирование при запуске...
+2026-05-18 16:49:49  INFO      rootkit_checker — RootkitChecker init (root=False)
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка скрытых процессов...
+2026-05-18 16:49:49  INFO      rootkit_checker — Скрытые процессы не обнаружены
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка «Скрытые процессы»: ЧИСТО
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка модулей ядра...
+2026-05-18 16:49:49  INFO      rootkit_checker — Модули ядра чисты (66 проверено)
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка «Модули ядра»: ЧИСТО
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка /etc/ld.so.preload...
+2026-05-18 16:49:49  INFO      rootkit_checker — /etc/ld.so.preload не существует (норма)
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка «LD_PRELOAD инъекция»: ЧИСТО
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка /proc/net/tcp...
+2026-05-18 16:49:49  INFO      rootkit_checker — Подозрительных портов не обнаружено
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка «Подозрительные порты»: ЧИСТО
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка системных файлов...
+2026-05-18 16:49:49  INFO      rootkit_checker — Системные файлы в порядке (7 проверено)
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка «Системные файлы»: ЧИСТО
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
+2026-05-18 16:49:49  INFO      rootkit_checker — Проверка «Привилегии»: ЧИСТО
+2026-05-18 16:49:49  INFO      rootkit_checker — Rootkit scan завершён: угроза=ЧИСТАЯ, находок=0, пройдено=6/6
+2026-05-18 16:50:25  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-18 16:50:25  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-18 16:50:25  ERROR     gui — Scan error: '_tkinter.tkapp' object has no attribute '_prev_scan'
+2026-05-18 16:50:28  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-18 16:50:28  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-18 16:50:28  ERROR     gui — Scan error: '_tkinter.tkapp' object has no attribute '_prev_scan'
+2026-05-18 16:58:26  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-18 16:58:30  INFO      gui — Авто-сканирование при запуске...
+2026-05-18 16:58:30  INFO      rootkit_checker — RootkitChecker init (root=False)
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка скрытых процессов...
+2026-05-18 16:58:30  INFO      rootkit_checker — Скрытые процессы не обнаружены
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка «Скрытые процессы»: ЧИСТО
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка модулей ядра...
+2026-05-18 16:58:30  INFO      rootkit_checker — Модули ядра чисты (66 проверено)
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка «Модули ядра»: ЧИСТО
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка /etc/ld.so.preload...
+2026-05-18 16:58:30  INFO      rootkit_checker — /etc/ld.so.preload не существует (норма)
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка «LD_PRELOAD инъекция»: ЧИСТО
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка /proc/net/tcp...
+2026-05-18 16:58:30  INFO      rootkit_checker — Подозрительных портов не обнаружено
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка «Подозрительные порты»: ЧИСТО
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка системных файлов...
+2026-05-18 16:58:30  INFO      rootkit_checker — Системные файлы в порядке (7 проверено)
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка «Системные файлы»: ЧИСТО
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
+2026-05-18 16:58:30  INFO      rootkit_checker — Проверка «Привилегии»: ЧИСТО
+2026-05-18 16:58:30  INFO      rootkit_checker — Rootkit scan завершён: угроза=ЧИСТАЯ, находок=0, пройдено=6/6
+2026-05-18 16:58:44  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-18 16:58:44  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-18 17:00:09  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-18 17:00:09  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-18 17:01:40  ERROR     gui — Scan error: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-18 17:07:22  ERROR     api — Ошибка предсказания: The feature names should match those that were passed during fit.
+Feature names unseen at fit time:
+- Inbound
+
+2026-05-18 17:07:22  INFO      api — Скан test_traffic.csv: 0/1000 аномалий, угроза=НИЗКАЯ
+2026-05-18 17:24:36  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-18 17:24:40  INFO      gui — Авто-сканирование при запуске...
+2026-05-18 17:24:40  INFO      rootkit_checker — RootkitChecker init (root=False)
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка скрытых процессов...
+2026-05-18 17:24:40  INFO      rootkit_checker — Скрытые процессы не обнаружены
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка «Скрытые процессы»: ЧИСТО
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка модулей ядра...
+2026-05-18 17:24:40  INFO      rootkit_checker — Модули ядра чисты (66 проверено)
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка «Модули ядра»: ЧИСТО
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка /etc/ld.so.preload...
+2026-05-18 17:24:40  INFO      rootkit_checker — /etc/ld.so.preload не существует (норма)
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка «LD_PRELOAD инъекция»: ЧИСТО
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка /proc/net/tcp...
+2026-05-18 17:24:40  INFO      rootkit_checker — Подозрительных портов не обнаружено
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка «Подозрительные порты»: ЧИСТО
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка системных файлов...
+2026-05-18 17:24:40  INFO      rootkit_checker — Системные файлы в порядке (7 проверено)
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка «Системные файлы»: ЧИСТО
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
+2026-05-18 17:24:40  INFO      rootkit_checker — Проверка «Привилегии»: ЧИСТО
+2026-05-18 17:24:40  INFO      rootkit_checker — Rootkit scan завершён: угроза=ЧИСТАЯ, находок=0, пройдено=6/6
+2026-05-18 17:25:57  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-18 17:26:01  INFO      gui — Авто-сканирование при запуске...
+2026-05-18 17:26:01  INFO      rootkit_checker — RootkitChecker init (root=False)
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка скрытых процессов...
+2026-05-18 17:26:01  INFO      rootkit_checker — Скрытые процессы не обнаружены
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка «Скрытые процессы»: ЧИСТО
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка модулей ядра...
+2026-05-18 17:26:01  INFO      rootkit_checker — Модули ядра чисты (66 проверено)
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка «Модули ядра»: ЧИСТО
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка /etc/ld.so.preload...
+2026-05-18 17:26:01  INFO      rootkit_checker — /etc/ld.so.preload не существует (норма)
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка «LD_PRELOAD инъекция»: ЧИСТО
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка /proc/net/tcp...
+2026-05-18 17:26:01  INFO      rootkit_checker — Подозрительных портов не обнаружено
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка «Подозрительные порты»: ЧИСТО
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка системных файлов...
+2026-05-18 17:26:01  INFO      rootkit_checker — Системные файлы в порядке (7 проверено)
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка «Системные файлы»: ЧИСТО
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
+2026-05-18 17:26:01  INFO      rootkit_checker — Проверка «Привилегии»: ЧИСТО
+2026-05-18 17:26:01  INFO      rootkit_checker — Rootkit scan завершён: угроза=ЧИСТАЯ, находок=0, пройдено=6/6
+2026-05-18 17:27:00  INFO      process_monitor — Модель ProcessMonitor загружена
+2026-05-18 17:27:04  INFO      gui — Авто-сканирование при запуске...
+2026-05-18 17:27:04  INFO      rootkit_checker — RootkitChecker init (root=False)
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка скрытых процессов...
+2026-05-18 17:27:04  INFO      rootkit_checker — Скрытые процессы не обнаружены
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка «Скрытые процессы»: ЧИСТО
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка модулей ядра...
+2026-05-18 17:27:04  INFO      rootkit_checker — Модули ядра чисты (66 проверено)
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка «Модули ядра»: ЧИСТО
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка /etc/ld.so.preload...
+2026-05-18 17:27:04  INFO      rootkit_checker — /etc/ld.so.preload не существует (норма)
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка «LD_PRELOAD инъекция»: ЧИСТО
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка /proc/net/tcp...
+2026-05-18 17:27:04  INFO      rootkit_checker — Подозрительных портов не обнаружено
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка «Подозрительные порты»: ЧИСТО
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка системных файлов...
+2026-05-18 17:27:04  INFO      rootkit_checker — Системные файлы в порядке (7 проверено)
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка «Системные файлы»: ЧИСТО
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка привилегированных аккаунтов...
+2026-05-18 17:27:04  INFO      rootkit_checker — Проверка «Привилегии»: ЧИСТО
+2026-05-18 17:27:04  INFO      rootkit_checker — Rootkit scan завершён: угроза=ЧИСТАЯ, находок=0, пройдено=6/6

@@ -113,7 +113,6 @@ class RootkitGuard(ctk.CTk):
             "filename": "", "filepath": "", "timestamp": "",
             "top_ports": [], "max_proba": 0.0,
         }
-        self._prev_scan = {}
         self._api_available = False
         self._api_proc      = None
         self._build_ui()
@@ -171,27 +170,6 @@ class RootkitGuard(ctk.CTk):
         self.after(0, lambda: self.api_lbl.configure(
             text="● API не отвечает", text_color="red"))
 
-    def _auto_startup_scan(self):
-        """При запуске автоматически делает Rootkit Scan в фоне."""
-        import time
-        time.sleep(3)
-        log.info("Авто-сканирование при запуске...")
-        try:
-            checker = RootkitChecker()
-            result  = checker.run_all()
-            threat  = result.threat_level
-            count   = len(result.findings)
-            color   = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
-                       "ЧИСТАЯ": "#2dc97e"}.get(threat, "#2dc97e")
-            msg = f"Авто-скан: {threat} · находок: {count}"
-            self.after(0, lambda: self.api_lbl.configure(
-                text=f"● {msg}", text_color=color))
-            notify_threat(threat, f"Авто-сканирование при запуске: {count} находок")
-            if threat == "ВЫСОКАЯ":
-                self.after(500, lambda: threading.Thread(
-                    target=self._run_rootkit_local, daemon=True).start())
-        except Exception as e:
-           log.error(f"Авто-скан ошибка: {e}")
     # ── UI ──────────────────────────────────────────────────────
 
     def _build_ui(self):
@@ -355,8 +333,7 @@ class RootkitGuard(ctk.CTk):
         frame = ctk.CTkFrame(self.main, fg_color="transparent")
 
         # Заголовок
-        hdr = ctk.CTkFrame(frame, fg_color="#0d1b3e", corner_radius=12,
-                           border_width=1, border_color="#1f538d")
+        hdr = ctk.CTkFrame(frame, fg_color="#1a1a2e", corner_radius=10)
         hdr.pack(fill="x", padx=20, pady=(10, 5))
         ctk.CTkLabel(hdr, text="🔍  Сканирование файлов",
                      font=ctk.CTkFont(size=20, weight="bold")).pack(side="left", padx=16, pady=12)
@@ -395,15 +372,12 @@ class RootkitGuard(ctk.CTk):
         self.use_api_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(pf, text="Через API", variable=self.use_api_var).pack(side="left", padx=15)
         ctk.CTkButton(pf, text="▶  ЗАПУСТИТЬ АНАЛИЗ", height=36, width=200,
-                      fg_color="#1f538d", hover_color="#2980b9",
+                      fg_color="#1f538d",
                       font=ctk.CTkFont(size=13, weight="bold"),
-                      corner_radius=8,
                       command=self._run_scan).pack(side="right", padx=14, pady=8)
 
         # Прогресс
-        self.scan_progress = ctk.CTkProgressBar(
-            frame, height=16, corner_radius=8,
-            progress_color="#1f538d")
+        self.scan_progress = ctk.CTkProgressBar(frame, height=14, corner_radius=7)
         self.scan_progress.pack(fill="x", padx=20, pady=6)
         self.scan_progress.set(0)
         self.scan_status = ctk.CTkLabel(frame, text="Выбери файл и нажми ЗАПУСТИТЬ",
@@ -414,21 +388,19 @@ class RootkitGuard(ctk.CTk):
         cards_frame = ctk.CTkFrame(frame, fg_color="transparent")
         cards_frame.pack(fill="x", padx=20, pady=6)
         card_data = [
-            ("total_lbl",  "📊 Всего записей", "—", "#1a3a5c", "#3498db"),
-            ("normal_lbl", "✅ Нормальных",    "—", "#1a3a2a", "#2dc97e"),
-            ("anom_lbl",   "⚠️ Аномалий",      "—", "#3a1a1a", "#e74c3c"),
-            ("threat_lbl", "🛡 Угроза",        "—", "#2a1a3a", "#9b59b6"),
+            ("total_lbl",  "Всего записей", "—", "#1f538d"),
+            ("normal_lbl", "Нормальных",    "—", "#2d6a4f"),
+            ("anom_lbl",   "Аномалий",      "—", "#7a1e1e"),
+            ("threat_lbl", "Угроза",        "—", "#6d3a9c"),
         ]
-        for i, (attr, title, val, bg, accent) in enumerate(card_data):
-            card = ctk.CTkFrame(cards_frame, fg_color=bg, corner_radius=12,
-                                border_width=2, border_color=accent)
+        for i, (attr, title, val, color) in enumerate(card_data):
+            card = ctk.CTkFrame(cards_frame, fg_color=color, corner_radius=12)
             card.grid(row=0, column=i, padx=6, sticky="ew")
             cards_frame.grid_columnconfigure(i, weight=1)
             ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=11),
-                         text_color=accent).pack(pady=(10, 2))
+                         text_color="lightgray").pack(pady=(10, 2))
             lbl = ctk.CTkLabel(card, text=val,
-                               font=ctk.CTkFont(size=22, weight="bold"),
-                               text_color="white")
+                               font=ctk.CTkFont(size=22, weight="bold"))
             lbl.pack(pady=(0, 10))
             setattr(self, attr, lbl)
 
@@ -462,29 +434,18 @@ class RootkitGuard(ctk.CTk):
 
         # Кнопка PDF после скана
         self.scan_pdf_btn = ctk.CTkButton(
-            frame, text="📕  Создать PDF отчёт", height=40,
-            fg_color="#7a1e1e", hover_color="#c0392b",
-            corner_radius=8, state="disabled",
+            frame, text="📕  Создать PDF отчёт", height=38,
+            fg_color="#7a1e1e", state="disabled",
             font=ctk.CTkFont(size=13, weight="bold"),
             command=lambda: threading.Thread(
                 target=self._gen_pdf_report, daemon=True).start())
-        self.scan_pdf_btn.pack(pady=(4, 8), padx=20, fill="x")
+        self.scan_pdf_btn.pack(pady=(4, 8))
 
         self._scan_history = []
         return frame
 
     def _browse_file(self):
-        path = filedialog.askopenfilename(
-            filetypes=[
-                ("Все файлы",        "*.*"),
-                ("CSV файлы",        "*.csv"),
-                ("Текстовые файлы",  "*.txt"),
-                ("Лог файлы",        "*.log"),
-                ("JSON файлы",       "*.json"),
-                ("Python скрипты",   "*.py"),
-                ("Shell скрипты",    "*.sh"),
-            ]
-        )
+        path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         if path:
             self.file_path.delete(0, "end")
             self.file_path.insert(0, path)
@@ -569,11 +530,6 @@ class RootkitGuard(ctk.CTk):
             self._print_results(log_ui, data, "локальный")
             self.scan_progress.set(1.0)
             notify_threat(threat, f"{Path(path).name}: {n_anom} аномалий ({pct:.1f}%)")
-            # При ВЫСОКОЙ угрозе — автоматически запускаем Rootkit Scan
-            if threat == "ВЫСОКАЯ":
-                log_ui("\n  🔴 ВЫСОКАЯ УГРОЗА — автоматически запускаю Rootkit Scan...")
-                self.after(1000, lambda: threading.Thread(
-                    target=self._run_rootkit_local, daemon=True).start())
 
         except Exception as e:
             log_ui(f"[!] Ошибка: {e}")
@@ -583,6 +539,8 @@ class RootkitGuard(ctk.CTk):
         self.scan_result.configure(state="disabled")
 
     def _store_scan(self, data: dict, filepath: str, ts: str):
+        # Сохраняем предыдущий скан для сравнения
+        self._prev_scan = self._last_scan.copy()
         self._last_scan = {
             "total":     data.get("total_rows", 0),
             "anomaly":   data.get("anomalies", 0),
@@ -627,12 +585,6 @@ class RootkitGuard(ctk.CTk):
         log_ui(f"{'='*48}")
 
         # Активируем кнопку PDF
-        # Меняем цвет прогресс-бара по угрозе
-        bar_color = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
-                     "НИЗКАЯ": "#2dc97e"}.get(threat, "#2dc97e")
-        self.after(0, lambda c=bar_color: self.scan_progress.configure(
-            progress_color=c))
-        
         self.after(0, lambda: self.scan_pdf_btn.configure(state="normal"))
 
         # Добавляем в историю
@@ -642,17 +594,6 @@ class RootkitGuard(ctk.CTk):
         self._scan_history.insert(0, entry)
         self._scan_history = self._scan_history[:8]
         self.after(0, self._update_scan_history)
-        
-        # Сравнение с прошлым сканом
-        if self._prev_scan.get("total", 0) > 0:
-            prev_anom = self._prev_scan.get("anomaly", 0)
-            curr_anom = data.get("anomalies", 0)
-            if curr_anom < prev_anom:
-                log_ui(f"\n  ✅ Улучшение: аномалий было {prev_anom}, стало {curr_anom}")
-            elif curr_anom > prev_anom:
-                log_ui(f"\n  ⚠️  Ухудшение: аномалий было {prev_anom}, стало {curr_anom}")
-            else:
-                log_ui(f"\n  ➡️  Без изменений: {curr_anom} аномалий")
 
         self.scan_status.configure(
             text=f"✓ Готово — угроза: {threat}", text_color=threat_color)

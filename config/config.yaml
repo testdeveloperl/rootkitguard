@@ -4,7 +4,7 @@ api:
   port: 8000
 app:
   name: RootkitGuard
-  version: 2.0.0
+  version: "2.1"
   window_size: 1200x750
 logging:
   backup_count: 3
