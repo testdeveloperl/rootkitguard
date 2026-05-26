@@ -4,7 +4,7 @@ api:
   port: 8000
 app:
   name: RootkitGuard
-  version: "2.1"
+  version: '2.1'
   window_size: 1200x750
 logging:
   backup_count: 3
@@ -29,7 +29,7 @@ monitor:
   top_processes: 50
 notifications:
   enabled: true
-  min_threat_lvl: СРЕДНЯЯ
+  min_threat_lvl: ВЫСОКАЯ
   sound: false
 rootkit:
   check_hidden_procs: true

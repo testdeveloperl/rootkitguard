@@ -19,9 +19,17 @@ sys.path.insert(0, SRC)
 
 def cmd_gui():
     """Запустить графический интерфейс."""
+    import sys
+    sys.path.insert(0, SRC)
+    from login_screen import LoginScreen
     from rootkitguard import RootkitGuard
-    app = RootkitGuard()
-    app.mainloop()
+
+    def on_login(username):
+        app = RootkitGuard(username=username)
+        app.mainloop()
+
+    login = LoginScreen(on_success=on_login)
+    login.mainloop()
 
 
 def cmd_api():

@@ -26,6 +26,7 @@ from rootkit_checker import RootkitChecker
 from notifier import notify_threat
 from logger import get_logger
 from config_loader import cfg
+from i18n import t, set_lang, get_lang
 
 log = get_logger("gui")
 
@@ -97,9 +98,10 @@ def generate_demo_models():
 
 
 class RootkitGuard(ctk.CTk):
-    def __init__(self):
+    def __init__(self, username: str = "admin"):
         super().__init__()
-        self.title("RootkitGuard — Система обнаружения аномалий v2.1")
+        self.username = username
+        self.title(f"RootkitGuard — {self.username} — Система обнаружения аномалий v2.1")
         w, h = cfg.get("app", {}).get("window_size", "1200x750").split("x")
         self.geometry(f"{w}x{h}")
         self.resizable(True, True)
@@ -183,9 +185,10 @@ class RootkitGuard(ctk.CTk):
             count   = len(result.findings)
             color   = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
                        "ЧИСТАЯ": "#2dc97e"}.get(threat, "#2dc97e")
-            msg = f"Авто-скан: {threat} · находок: {count}"
-            self.after(0, lambda: self.api_lbl.configure(
-                text=f"● {msg}", text_color=color))
+            msg = f"{t('auto_scan')}: {threat} · {t('findings')}: {count}"
+            self._last_autoscan = (threat, count)
+            self.after(0, lambda m=msg, c=color: self.api_lbl.configure(
+                text=f"● {m}", text_color=c))
             notify_threat(threat, f"Авто-сканирование при запуске: {count} находок")
             if threat == "ВЫСОКАЯ":
                 self.after(500, lambda: threading.Thread(
@@ -231,6 +234,17 @@ class RootkitGuard(ctk.CTk):
                                        text_color=mc, font=ctk.CTkFont(size=11))
         self.model_lbl.pack(side="bottom", pady=(0, 2))
 
+        # Переключатель языка
+        lang_frame = ctk.CTkFrame(self.nav, fg_color="transparent")
+        lang_frame.pack(side="bottom", fill="x", padx=8, pady=(0, 4))
+        for lang, label in [("ru", "РУС"), ("en", "ENG"), ("kz", "ҚАЗ")]:
+            ctk.CTkButton(lang_frame, text=label, width=55, height=22,
+                          fg_color="#1e293b", hover_color="#2d3748",
+                          font=ctk.CTkFont(size=10),
+                          command=lambda l=lang: self._switch_lang(l)
+                          ).pack(side="left", padx=2)
+            
+
         # API статус + кнопка запуска
         api_row = ctk.CTkFrame(self.nav, fg_color="transparent")
         api_row.pack(side="bottom", fill="x", padx=8, pady=(0, 2))
@@ -265,6 +279,49 @@ class RootkitGuard(ctk.CTk):
         for k, btn in self.nav_buttons.items():
             btn.configure(fg_color="#1f538d" if k == key else "transparent")
 
+    def _switch_lang(self, lang: str):
+        set_lang(lang)
+        # Пересоздаём все страницы
+        for p in self.pages.values():
+            p.destroy()
+        self.pages = {
+            "home":      self._page_home(),
+            "scan":      self._page_scan(),
+            "rootkit":   self._page_rootkit(),
+            "monitor":   self._page_monitor(),
+            "analytics": self._page_analytics(),
+            "report":    self._page_report(),
+            "settings":  self._page_settings(),
+            "about":     self._page_about(),
+        }
+        # Обновляем навигацию
+        pages_nav = [
+            (t("home"),         "home"),
+            (t("scan"),         "scan"),
+            (t("rootkit_scan"), "rootkit"),
+            (t("monitor"),      "monitor"),
+            (t("analytics"),    "analytics"),
+            (t("report"),       "report"),
+            (t("settings"),     "settings"),
+            (t("about"),        "about"),
+        ]
+        icons = ["🏠","🔍","🦠","👁","📊","📄","⚙️","ℹ️"]
+        for (label, key), icon in zip(pages_nav, icons):
+            if key in self.nav_buttons:
+                self.nav_buttons[key].configure(text=f"  {icon}  {label}")
+        # Обновляем статусы внизу панели
+        mc = "#2dc97e" if self.model_loaded else "#e74c3c"
+        mt = t("model_loaded") if self.model_loaded else t("model_not_found")
+        self.model_lbl.configure(text=mt, text_color=mc)
+        # Обновляем текст авто-скана если уже был
+        if hasattr(self, '_last_autoscan'):
+            threat, count = self._last_autoscan
+            color = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
+                     "ЧИСТАЯ": "#2dc97e"}.get(threat, "#2dc97e")
+            msg = f"{t('auto_scan')}: {threat} · {t('findings')}: {count}"
+            self.api_lbl.configure(text=f"● {msg}", text_color=color)
+        self.show_page("home")
+        
     def _gen_demo_models_thread(self):
         self.model_lbl.configure(text="⏳ Генерация...", text_color="yellow")
         try:
@@ -280,77 +337,335 @@ class RootkitGuard(ctk.CTk):
 
     # ── Главная ─────────────────────────────────────────────────
 
+    
+
+
     def _page_home(self):
+        import time
+        from pathlib import Path
+    
         frame = ctk.CTkFrame(self.main, fg_color="transparent")
-        ctk.CTkLabel(frame, text="RootkitGuard",
-                     font=ctk.CTkFont(size=28, weight="bold")).pack(pady=(10, 2))
-        ctk.CTkLabel(frame,
-                     text="Система обнаружения rootkit-подобных аномалий на основе ML",
-                     font=ctk.CTkFont(size=13), text_color="gray").pack(pady=(0, 16))
-
-        cards = ctk.CTkFrame(frame, fg_color="transparent")
-        cards.pack(fill="x", padx=20)
-        for i, (title, value, color) in enumerate([
-            ("Алгоритм", "Random Forest",  "#1f538d"),
-            ("Датасет",  "CIC-IDS2018",    "#2d6a4f"),
-            ("Точность", "99.99%",         "#6d3a9c"),
-            ("ROC-AUC",  "0.9999",         "#7a4520"),
-        ]):
-            card = ctk.CTkFrame(cards, fg_color=color, corner_radius=12)
-            card.grid(row=0, column=i, padx=8, pady=8, sticky="ew")
-            cards.grid_columnconfigure(i, weight=1)
-            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=11),
-                         text_color="lightgray").pack(pady=(12, 2))
-            ctk.CTkLabel(card, text=value,
-                         font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(0, 12))
-
-        ctk.CTkLabel(frame, text="Быстрые действия",
-                     font=ctk.CTkFont(size=15, weight="bold")).pack(pady=(16, 8))
-        actions = ctk.CTkFrame(frame, fg_color="transparent")
-        actions.pack()
-        for txt, page, color in [
-            ("CSV Сканирование",  "scan",    "#1f538d"),
-            ("Rootkit Scan",      "rootkit", "#7a1e1e"),
-            ("Мониторинг",        "monitor", "#2d6a4f"),
-            ("Создать отчёт PDF", "report",  "#6d3a9c"),
-        ]:
-            ctk.CTkButton(actions, text=txt, width=165, height=42,
-                          fg_color=color,
-                          command=lambda p=page: self.show_page(p)
-                          ).pack(side="left", padx=6)
-
-        # Баннер демо-моделей
-        if not self.model_loaded:
-            banner = ctk.CTkFrame(frame, fg_color="#2b1a00", corner_radius=10)
-            banner.pack(fill="x", padx=20, pady=(14, 0))
-            ctk.CTkLabel(banner,
-                         text="⚠  Модели не найдены. Нет датасета CIC-IDS2018?",
-                         text_color="#f39c12",
-                         font=ctk.CTkFont(size=12)).pack(side="left", padx=12, pady=10)
-            ctk.CTkButton(banner, text="⚡ Сгенерировать демо-модели", width=220,
-                          fg_color="#7a4520",
-                          command=lambda: threading.Thread(
-                              target=self._gen_demo_models_thread, daemon=True).start()
-                          ).pack(side="right", padx=12, pady=8)
-
-        # Лог
-        ctk.CTkLabel(frame, text="Системный журнал",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=(16, 5))
-        lb = ctk.CTkTextbox(frame, height=120,
-                             font=ctk.CTkFont(family="monospace", size=12))
-        lb.pack(fill="x", padx=20)
+    
+        # ── Топ-бар ───────────────────────────────────────────────
+        topbar = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                              border_width=1, border_color="#1e293b", height=52)
+        topbar.pack(fill="x", padx=16, pady=(8, 6))
+        topbar.pack_propagate(False)
+    
+        ctk.CTkLabel(topbar, text="⬡  ROOTKITGUARD",
+                     font=ctk.CTkFont(size=13, weight="bold"),
+                     text_color="#00d4ff").pack(side="left", padx=16, pady=10)
+    
+        # Разделитель
+        ctk.CTkFrame(topbar, fg_color="#1e293b", width=1).pack(side="left", fill="y", pady=8)
+    
+        ctk.CTkLabel(topbar, text=f"  👤 {self.username}",
+                     font=ctk.CTkFont(size=12),
+                     text_color="#94a3b8").pack(side="left", padx=12)
+    
+        ctk.CTkFrame(topbar, fg_color="#1e293b", width=1).pack(side="left", fill="y", pady=8)
+    
+        self.home_time_lbl = ctk.CTkLabel(topbar, text="",
+                                           font=ctk.CTkFont(size=12),
+                                           text_color="#64748b")
+        self.home_time_lbl.pack(side="left", padx=12)
+    
+        # Статус API справа
+        self.home_api_lbl = ctk.CTkLabel(topbar, text="● API offline",
+                                          font=ctk.CTkFont(size=11),
+                                          text_color="#f39c12")
+        self.home_api_lbl.pack(side="right", padx=16)
+    
+        def update_time():
+            from datetime import datetime
+            now = datetime.now().strftime("%d.%m.%Y  %H:%M:%S")
+            try:
+                self.home_time_lbl.configure(text=f"🕐  {now}")
+                api_txt = "● API online" if self._api_available else "● API offline"
+                api_col = "#00ff88" if self._api_available else "#f39c12"
+                self.home_api_lbl.configure(text=api_txt, text_color=api_col)
+                self.after(1000, update_time)
+            except Exception:
+                pass
+        self.after(100, update_time)
+    
+        # ── Выбор модели ──────────────────────────────────────────
+        ctk.CTkLabel(frame, text=t("choose_model"),
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color="#475569").pack(anchor="w", padx=20, pady=(4, 6))
+    
+        models_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        models_frame.pack(fill="x", padx=16)
+    
+        model_data = [
+            {
+                "name":  "Random Forest",
+                "short": "RF",
+                "type":  "Supervised",
+                "f1":    "1.0000",
+                "auc":   "0.9999",
+                "speed": "●●●●○",
+                "desc":  t("rf_desc"),
+                "color": "#0ea5e9",
+                "bg":    "#0c1929",
+            },
+            {
+                "name":  "XGBoost",
+                "short": "XGB",
+                "type":  "Supervised",
+                "f1":    "1.0000",
+                "auc":   "1.0000",
+                "speed": "●●●○○",
+                "desc":  t("xgb_desc"),
+                "color": "#a855f7",
+                "bg":    "#160d29",
+            },
+            {
+                "name":  "Isolation Forest",
+                "short": "ISO",
+                "type":  "Unsupervised",
+                "f1":    "0.0200",
+                "auc":   "0.3258",
+                "speed": "●●●●●",
+                "desc":  t("iso_desc"),
+                "color": "#f59e0b",
+                "bg":    "#1a1200",
+            },
+            {
+                "name":  t("ensemble"),
+                "short": "ALL",
+                "type":  "Hybrid",
+                "f1":    "1.0000",
+                "auc":   "0.9999",
+                "speed": "●●○○○",
+                "desc":  t("all_desc"),
+                "color": "#00ff88",
+                "bg":    "#001a0d",
+            },
+        ]
+    
+        self._selected_model = ctk.StringVar(value="Random Forest")
+        self._model_cards = {}
+    
+        for i, m in enumerate(model_data):
+            models_frame.grid_columnconfigure(i, weight=1)
+            card = ctk.CTkFrame(models_frame, fg_color=m["bg"], corner_radius=12,
+                                border_width=1, border_color="#1e293b",
+                                cursor="hand2")
+            card.grid(row=0, column=i, padx=5, sticky="ew")
+    
+            # Индикатор выбора
+            indicator = ctk.CTkFrame(card, fg_color=m["color"], height=3,
+                                      corner_radius=0)
+            indicator.pack(fill="x")
+            indicator.pack_forget()  # скрыт по умолчанию
+    
+            # Контент
+            inner = ctk.CTkFrame(card, fg_color="transparent")
+            inner.pack(fill="both", expand=True, padx=12, pady=10)
+    
+            # Шапка
+            top = ctk.CTkFrame(inner, fg_color="transparent")
+            top.pack(fill="x")
+            ctk.CTkLabel(top, text=m["short"],
+                         font=ctk.CTkFont(size=20, weight="bold"),
+                         text_color=m["color"]).pack(side="left")
+            ctk.CTkLabel(top, text=m["type"],
+                         font=ctk.CTkFont(size=9),
+                         text_color="#475569").pack(side="right", pady=(4, 0))
+    
+            ctk.CTkLabel(inner, text=m["name"],
+                         font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color="#94a3b8", anchor="w").pack(anchor="w", pady=(2, 6))
+    
+            ctk.CTkLabel(inner, text=m["desc"],
+                         font=ctk.CTkFont(size=10),
+                         text_color="#64748b", justify="left", anchor="w").pack(anchor="w")
+    
+            # Метрики
+            metrics = ctk.CTkFrame(inner, fg_color="transparent")
+            metrics.pack(fill="x", pady=(8, 4))
+            for label, val in [("F1", m["f1"]), ("AUC", m["auc"])]:
+                mf = ctk.CTkFrame(metrics, fg_color="#0a0e1a", corner_radius=6)
+                mf.pack(side="left", padx=(0, 4))
+                ctk.CTkLabel(mf, text=label,
+                             font=ctk.CTkFont(size=9),
+                             text_color="#475569").pack(padx=6, pady=(4, 0))
+                ctk.CTkLabel(mf, text=val,
+                             font=ctk.CTkFont(size=11, weight="bold"),
+                             text_color=m["color"]).pack(padx=6, pady=(0, 4))
+    
+            ctk.CTkLabel(inner, text=f"{t('speed')} {m['speed']}",
+                         font=ctk.CTkFont(size=10),
+                         text_color="#475569", anchor="w").pack(anchor="w")
+    
+            self._model_cards[m["name"]] = (card, indicator)
+    
+            def on_click(name=m["name"]):
+                self._selected_model.set(name)
+                self._highlight_model(name)
+                # Синхронизируем с выбором на странице сканирования
+                if hasattr(self, 'model_choice'):
+                    self.model_choice.set(name)
+    
+            card.bind("<Button-1>", lambda e, n=m["name"]: on_click(n))
+            for w in card.winfo_children():
+                w.bind("<Button-1>", lambda e, n=m["name"]: on_click(n))
+    
+        # Подсветить RF по умолчанию
+        self.after(200, lambda: self._highlight_model("Random Forest"))
+    
+        # ── Drag & Drop зона ──────────────────────────────────────
+        ctk.CTkLabel(frame, text=t("load_dataset"),
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color="#475569").pack(anchor="w", padx=20, pady=(14, 6))
+    
+        drop_zone = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                  border_width=1, border_color="#1e293b",
+                                  height=90, cursor="hand2")
+        drop_zone.pack(fill="x", padx=16)
+        drop_zone.pack_propagate(False)
+    
+        drop_inner = ctk.CTkFrame(drop_zone, fg_color="transparent")
+        drop_inner.place(relx=0.5, rely=0.5, anchor="center")
+    
+        self.drop_icon = ctk.CTkLabel(drop_inner, text="📂",
+                                       font=ctk.CTkFont(size=24))
+        self.drop_icon.pack(side="left", padx=(0, 10))
+    
+        drop_text_frame = ctk.CTkFrame(drop_inner, fg_color="transparent")
+        drop_text_frame.pack(side="left")
+    
+        self.drop_lbl = ctk.CTkLabel(drop_text_frame,
+                                      text=t("drag_drop"),
+                                      font=ctk.CTkFont(size=12, weight="bold"),
+                                      text_color="#94a3b8")
+        self.drop_lbl.pack(anchor="w")
+    
+        self.drop_sub = ctk.CTkLabel(drop_text_frame,
+                                      text=t("supported_files"),
+                                      font=ctk.CTkFont(size=10),
+                                      text_color="#475569")
+        self.drop_sub.pack(anchor="w")
+    
+        def on_drop_click(e=None):
+            from tkinter import filedialog
+            path = filedialog.askopenfilename(filetypes=[
+                ("Все файлы", "*.*"),
+                ("CSV", "*.csv"),
+                ("Логи", "*.log"),
+                ("Текст", "*.txt"),
+            ])
+            if path:
+                fname = Path(path).name
+                self.drop_lbl.configure(text=f"✓  {fname}", text_color="#00ff88")
+                self.drop_sub.configure(text=path, text_color="#475569")
+                self.drop_icon.configure(text="✅")
+                drop_zone.configure(border_color="#00ff88")
+                # Передаём в сканирование
+                if hasattr(self, 'file_path'):
+                    self.file_path.delete(0, "end")
+                    self.file_path.insert(0, path)
+                self._home_selected_file = path
+    
+        drop_zone.bind("<Button-1>", on_drop_click)
+        drop_inner.bind("<Button-1>", on_drop_click)
+        for w in drop_inner.winfo_children():
+            w.bind("<Button-1>", on_drop_click)
+    
+        # ── Кнопка запуска ────────────────────────────────────────
+        launch_frame = ctk.CTkFrame(frame, fg_color="transparent")
+        launch_frame.pack(fill="x", padx=16, pady=(10, 6))
+        launch_frame.grid_columnconfigure(0, weight=3)
+        launch_frame.grid_columnconfigure(1, weight=1)
+        launch_frame.grid_columnconfigure(2, weight=1)
+    
+        def launch_scan():
+            if hasattr(self, '_home_selected_file'):
+                self.show_page("scan")
+                self.after(100, self._run_scan)
+            else:
+                self.show_page("scan")
+    
+        ctk.CTkButton(launch_frame,
+                      text=t("run_analysis"),
+                      height=46, corner_radius=10,
+                      fg_color="#00d4ff", hover_color="#00b8d9",
+                      text_color="#000000",
+                      font=ctk.CTkFont(size=14, weight="bold"),
+                      command=launch_scan
+                      ).grid(row=0, column=0, padx=(0, 6), sticky="ew")
+    
+        ctk.CTkButton(launch_frame,
+                      text=t("rootkit_scan_btn"),
+                      height=46, corner_radius=10,
+                      fg_color="#1e293b", hover_color="#2d3748",
+                      text_color="#e2e8f0",
+                      font=ctk.CTkFont(size=13),
+                      command=lambda: self.show_page("rootkit")
+                      ).grid(row=0, column=1, padx=(0, 6), sticky="ew")
+    
+        ctk.CTkButton(launch_frame,
+                      text=t("analytics_btn"),
+                      height=46, corner_radius=10,
+                      fg_color="#1e293b", hover_color="#2d3748",
+                      text_color="#e2e8f0",
+                      font=ctk.CTkFont(size=13),
+                      command=lambda: self.show_page("analytics")
+                      ).grid(row=0, column=2, sticky="ew")
+    
+        # ── Системный журнал ──────────────────────────────────────
+        log_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                  border_width=1, border_color="#1e293b")
+        log_frame.pack(fill="both", expand=True, padx=16, pady=(6, 10))
+    
+        log_hdr = ctk.CTkFrame(log_frame, fg_color="transparent")
+        log_hdr.pack(fill="x", padx=12, pady=(8, 4))
+        ctk.CTkLabel(log_hdr, text=t("system_log"),
+                     font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color="#475569").pack(side="left")
+        self.log_dot = ctk.CTkLabel(log_hdr, text="●",
+                                     font=ctk.CTkFont(size=10),
+                                     text_color="#00ff88")
+        self.log_dot.pack(side="right")
+    
+        lb = ctk.CTkTextbox(log_frame,
+                             font=ctk.CTkFont(family="monospace", size=11),
+                             fg_color="transparent",
+                             text_color="#64748b")
+        lb.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+    
         for e in [
-            "[INFO]  RootkitGuard v2.1 запущен",
-            "[INFO]  Конфигурация: config/config.yaml",
-            "[INFO]  Логи: logs/rootkitguard.log",
-            f"[INFO]  Модель: {'загружена ✓' if self.model_loaded else 'не найдена — нажми «Сгенерировать демо-модели»'}",
-            "[INFO]  Нажми ▶ рядом с «API offline» чтобы запустить сервер",
+            f"[BOOT]   {t('boot_msg')}",
+            f"[AUTH]   {t('auth_msg')}: {self.username}",
+            f"[CONFIG] {t('config_msg')}",
+            f"[ML]     {t('ml_loaded') if self.model_loaded else t('model_not_found')}",
+            f"[SCAN]   {t('scan_started')}",
+            f"[READY]  {t('ready_msg')}",
         ]:
             lb.insert("end", e + "\n")
         lb.configure(state="disabled")
+    
         return frame
-
-    # ── CSV Сканирование ─────────────────────────────────────────
+    
+    
+    def _highlight_model(self, name: str):
+        """Подсветить выбранную модель."""
+        for mname, (card, indicator) in self._model_cards.items():
+            if mname == name:
+                card.configure(border_color={
+                    "Random Forest":    "#0ea5e9",
+                    "XGBoost":          "#a855f7",
+                    "Isolation Forest": "#f59e0b",
+                    "Ансамбль":         "#00ff88",
+                }.get(name, "#00d4ff"))
+                indicator.pack(fill="x", before=card.winfo_children()[1]
+                              if len(card.winfo_children()) > 1 else card.winfo_children()[0])
+            else:
+                card.configure(border_color="#1e293b")
+                indicator.pack_forget()
+    
+            # ── CSV Сканирование ─────────────────────────────────────────
     def _page_scan(self):
         frame = ctk.CTkFrame(self.main, fg_color="transparent")
 
@@ -366,7 +681,7 @@ class RootkitGuard(ctk.CTk):
         # Выбор файла
         ff = ctk.CTkFrame(frame, fg_color="#1e1e2e", corner_radius=10)
         ff.pack(fill="x", padx=20, pady=4)
-        ctk.CTkLabel(ff, text="📂  Файл:",
+        ctk.CTkLabel(ff, text=t("file_label"),
                      font=ctk.CTkFont(size=13, weight="bold"),
                      text_color="#85B7EB").pack(side="left", padx=14, pady=12)
         self.file_path = ctk.CTkEntry(ff, width=400,
@@ -393,7 +708,7 @@ class RootkitGuard(ctk.CTk):
         self.n_rows = ctk.CTkEntry(pf, width=80, placeholder_text="10000")
         self.n_rows.pack(side="left", padx=5)
         self.use_api_var = ctk.BooleanVar(value=True)
-        ctk.CTkCheckBox(pf, text="Через API", variable=self.use_api_var).pack(side="left", padx=15)
+        ctk.CTkCheckBox(pf, text=t("via_api"), variable=self.use_api_var).pack(side="left", padx=15)
         ctk.CTkButton(pf, text="▶  ЗАПУСТИТЬ АНАЛИЗ", height=36, width=200,
                       fg_color="#1f538d", hover_color="#2980b9",
                       font=ctk.CTkFont(size=13, weight="bold"),
@@ -406,7 +721,7 @@ class RootkitGuard(ctk.CTk):
             progress_color="#1f538d")
         self.scan_progress.pack(fill="x", padx=20, pady=6)
         self.scan_progress.set(0)
-        self.scan_status = ctk.CTkLabel(frame, text="Выбери файл и нажми ЗАПУСТИТЬ",
+        self.scan_status = ctk.CTkLabel(frame, text=t("waiting"),
                                          text_color="gray", font=ctk.CTkFont(size=12))
         self.scan_status.pack()
 
@@ -441,7 +756,7 @@ class RootkitGuard(ctk.CTk):
         # Лог слева
         log_frame = ctk.CTkFrame(bottom, fg_color="#1e1e2e", corner_radius=10)
         log_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
-        ctk.CTkLabel(log_frame, text="📋  Детали сканирования",
+        ctk.CTkLabel(log_frame, text=t("scan_details"),
                      font=ctk.CTkFont(size=12, weight="bold"),
                      text_color="#85B7EB").pack(anchor="w", padx=12, pady=(8, 2))
         self.scan_result = ctk.CTkTextbox(
@@ -451,18 +766,18 @@ class RootkitGuard(ctk.CTk):
         # История справа
         hist_frame = ctk.CTkFrame(bottom, fg_color="#1e1e2e", corner_radius=10)
         hist_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
-        ctk.CTkLabel(hist_frame, text="🕐  История",
+        ctk.CTkLabel(hist_frame, text=t("history"),
                      font=ctk.CTkFont(size=12, weight="bold"),
                      text_color="#85B7EB").pack(anchor="w", padx=12, pady=(8, 4))
         self.scan_history_box = ctk.CTkTextbox(
             hist_frame, font=ctk.CTkFont(family="monospace", size=10))
         self.scan_history_box.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        self.scan_history_box.insert("end", "Нет сканирований\n")
+        self.scan_history_box.insert("end", t("no_scans") + "\n")
         self.scan_history_box.configure(state="disabled")
 
         # Кнопка PDF после скана
         self.scan_pdf_btn = ctk.CTkButton(
-            frame, text="📕  Создать PDF отчёт", height=40,
+            frame, text=t("create_pdf"), height=40,
             fg_color="#7a1e1e", hover_color="#c0392b",
             corner_radius=8, state="disabled",
             font=ctk.CTkFont(size=13, weight="bold"),
