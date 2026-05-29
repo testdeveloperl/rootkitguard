@@ -1,0 +1,50 @@
+api:
+  db_path: data/rootkitguard.db
+  host: 0.0.0.0
+  port: 8000
+app:
+  name: RootkitGuard
+  version: '2.1'
+  window_size: 1200x750
+logging:
+  backup_count: 3
+  file: logs/rootkitguard.log
+  level: INFO
+  max_bytes: 10485760
+models:
+  iso_path: models/iso_cicids.pkl
+  rf_path: models/rf_cicids.pkl
+  scaler_path: models/scaler_cicids.pkl
+  xgb_path: models/xgb_cicids.pkl
+monitor:
+  interval_sec: 5
+  suspicious_ports:
+  - 4444
+  - 1337
+  - 31337
+  - 8080
+  - 9999
+  - 6666
+  - 5555
+  top_processes: 50
+notifications:
+  enabled: true
+  min_threat_lvl: ВЫСОКАЯ
+  sound: false
+rootkit:
+  check_hidden_procs: true
+  check_kernel_modules: true
+  check_ld_preload: true
+  check_proc_modules: true
+  check_sysfiles: true
+  suspicious_modules:
+  - rootkit
+  - hide
+  - stealth
+  - hook
+  - inject
+scan:
+  default_rows: 10000
+  threat_high_pct: 20.0
+  threat_mid_pct: 5.0
+  threshold: 0.5
