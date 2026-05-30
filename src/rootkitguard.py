@@ -185,10 +185,7 @@ class RootkitGuard(ctk.CTk):
             count   = len(result.findings)
             color   = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
                        "ЧИСТАЯ": "#2dc97e"}.get(threat, "#2dc97e")
-            msg = f"{t('auto_scan')}: {threat} · {t('findings')}: {count}"
             self._last_autoscan = (threat, count)
-            self.after(0, lambda m=msg, c=color: self.api_lbl.configure(
-                text=f"● {m}", text_color=c))
             notify_threat(threat, f"Авто-сканирование при запуске: {count} находок")
             if threat == "ВЫСОКАЯ":
                 self.after(500, lambda: threading.Thread(
@@ -198,14 +195,26 @@ class RootkitGuard(ctk.CTk):
     # ── UI ──────────────────────────────────────────────────────
 
     def _build_ui(self):
+        self._nav_expanded = True
         self.nav = ctk.CTkFrame(self, width=210, corner_radius=0)
         self.nav.pack(side="left", fill="y")
         self.nav.pack_propagate(False)
 
-        ctk.CTkLabel(self.nav, text="RootkitGuard",
-                     font=ctk.CTkFont(size=19, weight="bold")).pack(pady=(20, 2))
-        ctk.CTkLabel(self.nav, text=f"v{cfg.get('app',{}).get('version','2.1')}",
-                     font=ctk.CTkFont(size=11), text_color="gray").pack(pady=(0, 16))
+        # Кнопка сворачивания панели
+        toggle_btn = ctk.CTkButton(
+            self.nav, text="◀", width=30, height=30,
+            fg_color="transparent", hover_color="#2d2d44",
+            font=ctk.CTkFont(size=14),
+            command=self._toggle_nav)
+        toggle_btn.pack(anchor="e", padx=8, pady=(8, 0))
+        self._toggle_btn = toggle_btn
+
+        self.nav_title = ctk.CTkLabel(self.nav, text="RootkitGuard",
+                     font=ctk.CTkFont(size=19, weight="bold"))
+        self.nav_title.pack(pady=(20, 2))
+        self.nav_version = ctk.CTkLabel(self.nav, text=f"v{cfg.get('app',{}).get('version','2.1')}",
+                     font=ctk.CTkFont(size=11), text_color="gray")
+        self.nav_version.pack(pady=(0, 16))
 
         pages = [
             ("  🏠  Главная",       "home"),
@@ -234,15 +243,18 @@ class RootkitGuard(ctk.CTk):
                                        text_color=mc, font=ctk.CTkFont(size=11))
         self.model_lbl.pack(side="bottom", pady=(0, 2))
 
+        # Кнопка языка с dropdown
         # Переключатель языка
-        lang_frame = ctk.CTkFrame(self.nav, fg_color="transparent")
-        lang_frame.pack(side="bottom", fill="x", padx=8, pady=(0, 4))
-        for lang, label in [("ru", "РУС"), ("en", "ENG"), ("kz", "ҚАЗ")]:
-            ctk.CTkButton(lang_frame, text=label, width=55, height=22,
-                          fg_color="#1e293b", hover_color="#2d3748",
-                          font=ctk.CTkFont(size=10),
-                          command=lambda l=lang: self._switch_lang(l)
-                          ).pack(side="left", padx=2)
+        lang_row = ctk.CTkFrame(self.nav, fg_color="transparent")
+        lang_row.pack(side="bottom", fill="x", padx=8, pady=(0, 4))
+        for lang, label in [("ru","РУС"),("en","ENG"),("kz","ҚАЗ")]:
+            ctk.CTkButton(lang_row, text=label, width=52, height=22,
+                fg_color="#1e293b", hover_color="#2d3748",
+                font=ctk.CTkFont(size=10), corner_radius=6,
+                text_color="#64748b",
+                command=lambda l=lang: self._switch_lang(l)
+            ).pack(side="left", padx=2)
+        self._lang_menu_open = False
             
 
         # API статус + кнопка запуска
@@ -256,8 +268,18 @@ class RootkitGuard(ctk.CTk):
                       command=lambda: threading.Thread(
                           target=self._start_api, daemon=True).start()
                       ).pack(side="right")
+        self._lang_btn = ctk.CTkButton(api_row, text="РУС", width=52, height=22,
+            fg_color="transparent", hover_color="#1e293b",
+            font=ctk.CTkFont(size=10), corner_radius=6,
+            text_color="#64748b",
+            command=self._show_lang_menu)
+        self._lang_btn.pack(side="right", padx=(0,4))
+        self._lang_menu_open = False
 
-        self.main = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
+        self.main = ctk.CTkScrollableFrame(self, corner_radius=0,
+                                            fg_color="transparent",
+                                            scrollbar_button_color="#1e293b",
+                                            scrollbar_button_hover_color="#2d3748")
         self.main.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
         self.pages = {
@@ -272,12 +294,78 @@ class RootkitGuard(ctk.CTk):
         }
         self.show_page("home")
 
+    def _toggle_nav(self):
+        if self._nav_expanded:
+            # Сворачиваем
+            self.nav.configure(width=50)
+            for key, btn in self.nav_buttons.items():
+                icons = {"home":"🏠","scan":"🔍","rootkit":"🦠",
+                         "monitor":"👁","analytics":"📊",
+                         "report":"📄","settings":"⚙️","about":"ℹ️"}
+                btn.configure(text=f"  {icons.get(key,'●')}")
+            self._toggle_btn.configure(text="▶")
+            self.model_lbl.configure(text="●")
+            self.api_lbl.configure(text="●")
+            # Скрываем языковые кнопки
+            # язык скрыт при сворачивании
+            self._lang_btn.configure(text="●", width=36)
+            self._nav_expanded = False
+            self.nav_title.pack_forget()
+            self.nav_version.pack_forget()
+
+        else:
+            # Разворачиваем
+            self.nav.configure(width=210)
+            pages_nav = [
+                (t("home"),         "home"),
+                (t("scan"),         "scan"),
+                (t("rootkit_scan"), "rootkit"),
+                (t("monitor"),      "monitor"),
+                (t("analytics"),    "analytics"),
+                (t("report"),       "report"),
+                (t("settings"),     "settings"),
+                (t("about"),        "about"),
+            ]
+            icons = ["🏠","🔍","🦠","👁","📊","📄","⚙️","ℹ️"]
+            for (label, key), icon in zip(pages_nav, icons):
+                self.nav_buttons[key].configure(text=f"  {icon}  {label}")
+            self._toggle_btn.configure(text="◀")
+            mc = "#2dc97e" if self.model_loaded else "#e74c3c"
+            mt = t("model_loaded") if self.model_loaded else t("model_not_found")
+            self.model_lbl.configure(text=mt, text_color=mc)
+            # Восстанавливаем языковые кнопки
+            labels = {"ru": "РУС", "en": "ENG", "kz": "ҚАЗ"}
+            self._lang_btn.configure(
+                text=labels.get(get_lang(), "РУС"), width=160)
+            # Восстанавливаем API статус
+            threading.Thread(target=self._check_api, daemon=True).start()
+            self._nav_expanded = True
+            self.nav_title.pack(pady=(20, 2), before=self.nav_buttons["home"])
+            self.nav_version.pack(pady=(0, 16), before=self.nav_buttons["home"])
+
     def show_page(self, key):
         for p in self.pages.values():
             p.pack_forget()
         self.pages[key].pack(fill="both", expand=True)
         for k, btn in self.nav_buttons.items():
             btn.configure(fg_color="#1f538d" if k == key else "transparent")
+
+
+    def _show_lang_menu(self):
+        pass
+
+
+    def _close_lang_menu(self):
+        if hasattr(self, '_lang_popup'):
+            self._lang_popup.destroy()
+        self._lang_menu_open = False
+        self.unbind("<Button-1>")
+
+    def _select_lang(self, lang: str):
+        labels = {"ru": "РУС", "en": "ENG", "kz": "ҚАЗ"}
+        self._lang_btn.configure(text=labels.get(lang, "🌐"))
+        self._close_lang_menu()
+        self._switch_lang(lang)
 
     def _switch_lang(self, lang: str):
         set_lang(lang)
@@ -314,12 +402,10 @@ class RootkitGuard(ctk.CTk):
         mt = t("model_loaded") if self.model_loaded else t("model_not_found")
         self.model_lbl.configure(text=mt, text_color=mc)
         # Обновляем текст авто-скана если уже был
-        if hasattr(self, '_last_autoscan'):
-            threat, count = self._last_autoscan
-            color = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
-                     "ЧИСТАЯ": "#2dc97e"}.get(threat, "#2dc97e")
-            msg = f"{t('auto_scan')}: {threat} · {t('findings')}: {count}"
-            self.api_lbl.configure(text=f"● {msg}", text_color=color)
+        
+        labels = {"ru": "РУС", "en": "ENG", "kz": "ҚАЗ"}
+        self._lang_btn.configure(text=labels.get(lang, "🌐"))
+        
         self.show_page("home")
         
     def _gen_demo_models_thread(self):
@@ -361,7 +447,7 @@ class RootkitGuard(ctk.CTk):
     
         ctk.CTkLabel(topbar, text=f"  👤 {self.username}",
                      font=ctk.CTkFont(size=12),
-                     text_color="#94a3b8").pack(side="left", padx=12)
+                     text_color="#64748b").pack(side="left", padx=12)
     
         ctk.CTkFrame(topbar, fg_color="#1e293b", width=1).pack(side="left", fill="y", pady=8)
     
@@ -392,7 +478,7 @@ class RootkitGuard(ctk.CTk):
         # ── Выбор модели ──────────────────────────────────────────
         ctk.CTkLabel(frame, text=t("choose_model"),
                      font=ctk.CTkFont(size=11, weight="bold"),
-                     text_color="#475569").pack(anchor="w", padx=20, pady=(4, 6))
+                     text_color="#64748b").pack(anchor="w", padx=20, pady=(4, 6))
     
         models_frame = ctk.CTkFrame(frame, fg_color="transparent")
         models_frame.pack(fill="x", padx=16)
@@ -472,11 +558,11 @@ class RootkitGuard(ctk.CTk):
                          text_color=m["color"]).pack(side="left")
             ctk.CTkLabel(top, text=m["type"],
                          font=ctk.CTkFont(size=9),
-                         text_color="#475569").pack(side="right", pady=(4, 0))
+                         text_color="#64748b").pack(side="right", pady=(4, 0))
     
             ctk.CTkLabel(inner, text=m["name"],
                          font=ctk.CTkFont(size=11, weight="bold"),
-                         text_color="#94a3b8", anchor="w").pack(anchor="w", pady=(2, 6))
+                         text_color="#64748b", anchor="w").pack(anchor="w", pady=(2, 6))
     
             ctk.CTkLabel(inner, text=m["desc"],
                          font=ctk.CTkFont(size=10),
@@ -490,14 +576,14 @@ class RootkitGuard(ctk.CTk):
                 mf.pack(side="left", padx=(0, 4))
                 ctk.CTkLabel(mf, text=label,
                              font=ctk.CTkFont(size=9),
-                             text_color="#475569").pack(padx=6, pady=(4, 0))
+                             text_color="#64748b").pack(padx=6, pady=(4, 0))
                 ctk.CTkLabel(mf, text=val,
                              font=ctk.CTkFont(size=11, weight="bold"),
                              text_color=m["color"]).pack(padx=6, pady=(0, 4))
     
             ctk.CTkLabel(inner, text=f"{t('speed')} {m['speed']}",
                          font=ctk.CTkFont(size=10),
-                         text_color="#475569", anchor="w").pack(anchor="w")
+                         text_color="#64748b", anchor="w").pack(anchor="w")
     
             self._model_cards[m["name"]] = (card, indicator)
     
@@ -518,7 +604,7 @@ class RootkitGuard(ctk.CTk):
         # ── Drag & Drop зона ──────────────────────────────────────
         ctk.CTkLabel(frame, text=t("load_dataset"),
                      font=ctk.CTkFont(size=11, weight="bold"),
-                     text_color="#475569").pack(anchor="w", padx=20, pady=(14, 6))
+                     text_color="#64748b").pack(anchor="w", padx=20, pady=(14, 6))
     
         drop_zone = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
                                   border_width=1, border_color="#1e293b",
@@ -539,13 +625,13 @@ class RootkitGuard(ctk.CTk):
         self.drop_lbl = ctk.CTkLabel(drop_text_frame,
                                       text=t("drag_drop"),
                                       font=ctk.CTkFont(size=12, weight="bold"),
-                                      text_color="#94a3b8")
+                                      text_color="#64748b")
         self.drop_lbl.pack(anchor="w")
     
         self.drop_sub = ctk.CTkLabel(drop_text_frame,
                                       text=t("supported_files"),
                                       font=ctk.CTkFont(size=10),
-                                      text_color="#475569")
+                                      text_color="#64748b")
         self.drop_sub.pack(anchor="w")
     
         def on_drop_click(e=None):
@@ -559,7 +645,7 @@ class RootkitGuard(ctk.CTk):
             if path:
                 fname = Path(path).name
                 self.drop_lbl.configure(text=f"✓  {fname}", text_color="#00ff88")
-                self.drop_sub.configure(text=path, text_color="#475569")
+                self.drop_sub.configure(text=path, text_color="#64748b")
                 self.drop_icon.configure(text="✅")
                 drop_zone.configure(border_color="#00ff88")
                 # Передаём в сканирование
@@ -623,7 +709,7 @@ class RootkitGuard(ctk.CTk):
         log_hdr.pack(fill="x", padx=12, pady=(8, 4))
         ctk.CTkLabel(log_hdr, text=t("system_log"),
                      font=ctk.CTkFont(size=10, weight="bold"),
-                     text_color="#475569").pack(side="left")
+                     text_color="#64748b").pack(side="left")
         self.log_dot = ctk.CTkLabel(log_hdr, text="●",
                                      font=ctk.CTkFont(size=10),
                                      text_color="#00ff88")
@@ -670,16 +756,27 @@ class RootkitGuard(ctk.CTk):
         frame = ctk.CTkFrame(self.main, fg_color="transparent")
 
         # Заголовок
-        hdr = ctk.CTkFrame(frame, fg_color="#0d1b3e", corner_radius=12,
-                           border_width=1, border_color="#1f538d")
+        hdr = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                           border_width=1, border_color="#1e293b")
         hdr.pack(fill="x", padx=20, pady=(10, 5))
         ctk.CTkLabel(hdr, text="🔍  Сканирование файлов",
                      font=ctk.CTkFont(size=20, weight="bold")).pack(side="left", padx=16, pady=12)
-        ctk.CTkLabel(hdr, text="ML-анализ · Random Forest · XGBoost",
-                     font=ctk.CTkFont(size=11), text_color="#85B7EB").pack(side="left")
+        self._scan_model_selector = ctk.CTkSegmentedButton(
+            hdr,
+            values=["RF", "XGB", "ISO", "ALL"],
+            font=ctk.CTkFont(size=11),
+            fg_color="#1e293b",
+            selected_color="#00d4ff",
+            selected_hover_color="#00b8d9",
+            unselected_color="#1e293b",
+            unselected_hover_color="#2d3748",
+            text_color_disabled="#475569",
+            command=self._on_model_select)
+        self._scan_model_selector.set("RF")
+        self._scan_model_selector.pack(side="left", padx=10)
 
         # Выбор файла
-        ff = ctk.CTkFrame(frame, fg_color="#1e1e2e", corner_radius=10)
+        ff = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=10)
         ff.pack(fill="x", padx=20, pady=4)
         ctk.CTkLabel(ff, text=t("file_label"),
                      font=ctk.CTkFont(size=13, weight="bold"),
@@ -688,14 +785,14 @@ class RootkitGuard(ctk.CTk):
                                        placeholder_text="Выбери CSV файл...",
                                        font=ctk.CTkFont(size=12))
         self.file_path.pack(side="left", padx=5)
-        ctk.CTkButton(ff, text="📁 Обзор", width=100, height=32,
+        ctk.CTkButton(ff, text="📁 " + t("browse"), width=100, height=32,
                       fg_color="#2d6a4f",
                       command=self._browse_file).pack(side="left", padx=5)
 
         # Параметры
-        pf = ctk.CTkFrame(frame, fg_color="#1e1e2e", corner_radius=10)
+        pf = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=10)
         pf.pack(fill="x", padx=20, pady=4)
-        ctk.CTkLabel(pf, text="Порог:", font=ctk.CTkFont(size=12)).pack(side="left", padx=14, pady=10)
+        ctk.CTkLabel(pf, text=t("threshold") + ":", font=ctk.CTkFont(size=12)).pack(side="left", padx=14, pady=10)
         self.threshold = ctk.CTkSlider(pf, from_=0.1, to=0.9, number_of_steps=8, width=160)
         self.threshold.set(0.5)
         self.threshold.pack(side="left", padx=5)
@@ -704,12 +801,23 @@ class RootkitGuard(ctk.CTk):
                                         text_color="#2dc97e")
         self.thresh_lbl.pack(side="left")
         self.threshold.configure(command=lambda v: self.thresh_lbl.configure(text=f"{v:.1f}"))
-        ctk.CTkLabel(pf, text="  Строк:", font=ctk.CTkFont(size=12)).pack(side="left", padx=10)
+        ctk.CTkLabel(pf, text="  " + t("default_rows") + ":", font=ctk.CTkFont(size=12)).pack(side="left", padx=10)
         self.n_rows = ctk.CTkEntry(pf, width=80, placeholder_text="10000")
         self.n_rows.pack(side="left", padx=5)
         self.use_api_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(pf, text=t("via_api"), variable=self.use_api_var).pack(side="left", padx=15)
-        ctk.CTkButton(pf, text="▶  ЗАПУСТИТЬ АНАЛИЗ", height=36, width=200,
+        ctk.CTkButton(pf, text="↺", width=36, height=36,
+                      fg_color="transparent", hover_color="#1e293b",
+                      border_width=1, border_color="#2d3748",
+                      font=ctk.CTkFont(size=16),
+                      corner_radius=8,
+                      command=self._reset_scan).pack(side="right", padx=(0, 6), pady=8)
+        ctk.CTkButton(pf, text="🦠", width=36, height=36,
+                      fg_color="#7a1e1e", hover_color="#c0392b",
+                      corner_radius=8, font=ctk.CTkFont(size=16),
+                      command=self._launch_parallel_scan
+                      ).pack(side="right", padx=(0, 6), pady=8)
+        ctk.CTkButton(pf, text=t("run_scan"), height=36, width=200,
                       fg_color="#1f538d", hover_color="#2980b9",
                       font=ctk.CTkFont(size=13, weight="bold"),
                       corner_radius=8,
@@ -729,22 +837,29 @@ class RootkitGuard(ctk.CTk):
         cards_frame = ctk.CTkFrame(frame, fg_color="transparent")
         cards_frame.pack(fill="x", padx=20, pady=6)
         card_data = [
-            ("total_lbl",  "📊 Всего записей", "—", "#1a3a5c", "#3498db"),
-            ("normal_lbl", "✅ Нормальных",    "—", "#1a3a2a", "#2dc97e"),
-            ("anom_lbl",   "⚠️ Аномалий",      "—", "#3a1a1a", "#e74c3c"),
-            ("threat_lbl", "🛡 Угроза",        "—", "#2a1a3a", "#9b59b6"),
+            ("total_lbl",  t("total"),     "—", "#3498db"),
+            ("normal_lbl", t("normal"),    "—", "#2dc97e"),
+            ("anom_lbl",   t("anomalies"), "—", "#e74c3c"),
+            ("threat_lbl", t("threat"),    "—", "#9b59b6"),
         ]
-        for i, (attr, title, val, bg, accent) in enumerate(card_data):
-            card = ctk.CTkFrame(cards_frame, fg_color=bg, corner_radius=12,
-                                border_width=2, border_color=accent)
-            card.grid(row=0, column=i, padx=6, sticky="ew")
+        
+        for i, (attr, title, val, accent) in enumerate(card_data):
+            card = ctk.CTkFrame(cards_frame, fg_color="#0d1117", corner_radius=10,
+                                border_width=0, height=72)
+            card.grid(row=0, column=i, padx=4, sticky="ew")
+            card.grid_propagate(False)
             cards_frame.grid_columnconfigure(i, weight=1)
-            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=11),
-                         text_color=accent).pack(pady=(10, 2))
-            lbl = ctk.CTkLabel(card, text=val,
-                               font=ctk.CTkFont(size=22, weight="bold"),
-                               text_color="white")
-            lbl.pack(pady=(0, 10))
+            stripe = ctk.CTkFrame(card, fg_color=accent, width=4, corner_radius=0)
+            stripe.pack(side="left", fill="y")
+            content = ctk.CTkFrame(card, fg_color="transparent")
+            content.pack(side="left", fill="both", expand=True, padx=10, pady=8)
+            ctk.CTkLabel(content, text=title,
+                         font=ctk.CTkFont(size=10, weight="bold"),
+                         text_color=accent, anchor="w").pack(anchor="w")
+            lbl = ctk.CTkLabel(content, text=val,
+                               font=ctk.CTkFont(size=18, weight="bold"),
+                               text_color="white", anchor="w")
+            lbl.pack(anchor="w")
             setattr(self, attr, lbl)
 
         # Нижняя часть — лог + история
@@ -788,6 +903,146 @@ class RootkitGuard(ctk.CTk):
         self._scan_history = []
         return frame
 
+    def _launch_parallel_scan(self):
+        # Запускаем оба скана одновременно
+        self._parallel_scan = True
+        threading.Thread(target=self._scan_worker, daemon=True).start()
+        self.after(30000, lambda: setattr(self, "_parallel_scan", False))
+        
+        # Открываем мини-окно Rootkit
+        rk_win = ctk.CTkToplevel(self)
+        rk_win.title("🦠 Rootkit Scan")
+        rk_win.geometry("500x420")
+        rk_win.configure(fg_color="#0a0e1a")
+        rk_win.lift()
+
+        # Заголовок
+        ctk.CTkLabel(rk_win, text="🦠  ROOTKIT SCAN",
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="#e74c3c").pack(pady=(16, 4))
+
+        # Score
+        score_frame = ctk.CTkFrame(rk_win, fg_color="#0d1117",
+                                    corner_radius=10, border_width=1,
+                                    border_color="#1e293b")
+        score_frame.pack(fill="x", padx=16, pady=(0, 8))
+        ctk.CTkLabel(score_frame, text="Security Score",
+                     font=ctk.CTkFont(size=10),
+                     text_color="#475569").pack(anchor="w", padx=12, pady=(8, 0))
+        rk_score = ctk.CTkLabel(score_frame, text="...",
+                                 font=ctk.CTkFont(size=28, weight="bold"),
+                                 text_color="#f39c12")
+        rk_score.pack(anchor="w", padx=12, pady=(0, 8))
+
+        # Прогресс
+        rk_prog = ctk.CTkProgressBar(rk_win, height=6, corner_radius=3,
+                                      progress_color="#e74c3c")
+        rk_prog.pack(fill="x", padx=16, pady=(0, 8))
+        rk_prog.set(0)
+
+        # 6 карточек
+        cf = ctk.CTkFrame(rk_win, fg_color="transparent")
+        cf.pack(fill="x", padx=16, pady=(0, 8))
+        rk_cards = []
+        for i, (label, icon) in enumerate([
+            ("Процессы","🔎"), ("Ядро","🧩"), ("LD_PRE","💉"),
+            ("Порты","🔌"), ("Файлы","📁"), ("UID=0","🔑")
+        ]):
+            cf.grid_columnconfigure(i, weight=1)
+            card = ctk.CTkFrame(cf, fg_color="#0d1117", corner_radius=8,
+                                border_width=1, border_color="#1e293b", height=70)
+            card.grid(row=0, column=i, padx=2, sticky="ew")
+            card.grid_propagate(False)
+            ctk.CTkLabel(card, text=icon, font=ctk.CTkFont(size=14)).pack(pady=(6,0))
+            ctk.CTkLabel(card, text=label, font=ctk.CTkFont(size=9),
+                         text_color="#475569").pack()
+            lbl = ctk.CTkLabel(card, text="○", font=ctk.CTkFont(size=10),
+                               text_color="#475569")
+            lbl.pack(pady=(0, 4))
+            rk_cards.append((card, lbl))
+
+        # Лог
+        rk_log = ctk.CTkTextbox(rk_win, height=100,
+                                 font=ctk.CTkFont(family="monospace", size=10),
+                                 fg_color="#0d1117", text_color="#475569")
+        rk_log.pack(fill="x", padx=16, pady=(0, 8))
+
+        def run_rk():
+            try:
+                checker = RootkitChecker()
+                fns = [
+                    checker.check_hidden_processes,
+                    checker.check_kernel_modules,
+                    checker.check_ld_preload,
+                    checker.check_suspicious_ports,
+                    checker.check_system_files,
+                    checker.check_privilege_escalation,
+                ]
+                all_findings = []
+                for idx, fn in enumerate(fns):
+                    rk_win.after(0, lambda p=(idx+1)/6: rk_prog.set(p))
+                    try:
+                        findings = fn()
+                        all_findings.extend(findings)
+                        card, lbl = rk_cards[idx]
+                        if findings:
+                            rk_win.after(0, lambda c=card, l=lbl, n=len(findings): (
+                                c.configure(border_color="#e74c3c", fg_color="#1a0000"),
+                                l.configure(text=f"⚠{n}", text_color="#e74c3c")))
+                        else:
+                            rk_win.after(0, lambda c=card, l=lbl: (
+                                c.configure(border_color="#2dc97e", fg_color="#001a0d"),
+                                l.configure(text="✓", text_color="#2dc97e")))
+                    except Exception as e:
+                        rk_log.configure(state="normal")
+                        rk_log.insert("end", f"[!] {e}\n")
+                        rk_log.configure(state="disabled")
+
+                score = max(0, 100 - len(all_findings) * 15)
+                color = "#2dc97e" if score >= 80 else "#f39c12" if score >= 50 else "#e74c3c"
+                rk_win.after(0, lambda s=score, c=color:
+                             rk_score.configure(text=str(s), text_color=c))
+                rk_log.configure(state="normal")
+                rk_log.insert("end", f"✓ Готово. Score: {score}/100. Находок: {len(all_findings)}\n")
+                rk_log.configure(state="disabled")
+            except Exception as e:
+                rk_log.configure(state="normal")
+                rk_log.insert("end", f"[!] Ошибка: {e}\n")
+                rk_log.configure(state="disabled")
+
+        threading.Thread(target=run_rk, daemon=True).start()
+
+    def _reset_scan(self):
+        self.file_path.delete(0, "end")
+        self.scan_progress.set(0)
+        self.scan_progress.configure(progress_color="#1f538d")
+        self.scan_status.configure(text=t("waiting"), text_color="gray")
+        self.scan_result.configure(state="normal")
+        self.scan_result.delete("1.0", "end")
+        self.scan_result.configure(state="disabled")
+        self.total_lbl.configure(text="—")
+        self.normal_lbl.configure(text="—")
+        self.anom_lbl.configure(text="—")
+        self.threat_lbl.configure(text="—", text_color="white")
+        self.scan_pdf_btn.configure(state="disabled")
+        if hasattr(self, '_threat_panel'):
+            try:
+                self._threat_panel.destroy()
+            except Exception:
+                pass
+    
+    def _on_model_select(self, value):
+        model_map = {
+            "RF":  "Random Forest",
+            "XGB": "XGBoost", 
+            "ISO": "Isolation Forest",
+            "ALL": "Ансамбль",
+        }
+        if hasattr(self, 'model_choice'):
+            self.model_choice.set(model_map.get(value, "Random Forest"))
+        if hasattr(self, '_selected_model'):
+            self._selected_model.set(model_map.get(value, "Random Forest"))
+
     def _browse_file(self):
         path = filedialog.askopenfilename(
             filetypes=[
@@ -806,6 +1061,9 @@ class RootkitGuard(ctk.CTk):
 
     def _run_scan(self):
         threading.Thread(target=self._scan_worker, daemon=True).start()
+
+    
+
 
     def _scan_worker(self):
         self.scan_result.configure(state="normal")
@@ -837,6 +1095,11 @@ class RootkitGuard(ctk.CTk):
                     self._store_scan(data, path, ts)
                     self._print_results(log_ui, data, "API")
                     self.scan_progress.set(1.0)
+                    # AI анализ через API
+                    self.after(0, lambda d=data: self._show_api_ai_panel(d))
+                    threat_api = data.get("threat", "")
+                    if threat_api == "ВЫСОКАЯ":
+                        if not getattr(self, "_parallel_scan", False): self.after(500, lambda d=data: self._show_defense_modal(d))
                     self.scan_result.configure(state="disabled")
                     return
                 log_ui(f"[!] API {resp.status_code} — локальный режим")
@@ -846,20 +1109,125 @@ class RootkitGuard(ctk.CTk):
             log_ui(f"[+] Строк: {len(df):,}")
             self.scan_progress.set(0.3)
 
-            if "Label"     in df.columns: df = df.drop(columns=["Label"])
-            if "Timestamp" in df.columns: df = df.drop(columns=["Timestamp"])
+            # Убираем лишние колонки
+            drop_cols = ["Label", "Timestamp", "label", "timestamp",
+                         "Inbound", "inbound", "Flow ID", "flow_id",
+                         "Src IP", "Dst IP", "src_ip", "dst_ip"]
+            for col in drop_cols:
+                if col in df.columns:
+                    df = df.drop(columns=[col])
+
+            # Оставляем только числовые колонки
+            df = df.select_dtypes(include=[np.number])
             df = df.replace([np.inf, -np.inf], np.nan).fillna(0)
+
+            # Подгоняем колонки под модель
+            feat_cols = self.rf.feature_names_in_
+            for c in feat_cols:
+                if c not in df.columns:
+                    df[c] = 0
+            df = df[feat_cols]
+
             self.scan_progress.set(0.5)
             self.scan_status.configure(text="Анализ моделью...")
 
+            model_used = self._scan_model_selector.get() if hasattr(self, '_scan_model_selector') else "RF"
+            insight = {}
             if self.model_loaded:
-                X    = pd.DataFrame(self.scaler.transform(df), columns=df.columns)
-                cols = self.rf.feature_names_in_
-                for c in cols:
+                X = pd.DataFrame(self.scaler.transform(df), columns=df.columns)
+                feat_cols = self.rf.feature_names_in_
+                for c in feat_cols:
                     if c not in X.columns: X[c] = 0
-                X     = X[cols]
-                preds = self.rf.predict(X)
-                proba = self.rf.predict_proba(X)[:, 1]
+                X = X[feat_cols]
+
+                if model_used == "RF":
+                    preds = self.rf.predict(X)
+                    proba = self.rf.predict_proba(X)[:, 1]
+                    imp   = self.rf.feature_importances_
+                    top3  = [(feat_cols[i], round(imp[i]*100,1))
+                              for i in imp.argsort()[-3:][::-1]]
+                    insight = {
+                        "model":    "Random Forest",
+                        "desc":     "Supervised classifier. Строит 100 деревьев решений\nи голосует большинством.",
+                        "metrics":  [
+                            ("Топ признак",  f"{top3[0][0]} ({top3[0][1]}%)"),
+                            ("Уверенность",  f"{round(proba[preds==1].mean()*100 if preds.sum()>0 else 0,1)}%"),
+                            ("Высокая уверен.", f"{int((proba>0.9).sum())} записей"),
+                        ]
+                    }
+
+                elif model_used == "XGB":
+                    try:
+                        xgb_m = joblib.load("models/xgb_cicids.pkl")
+                        preds = xgb_m.predict(X)
+                        proba = xgb_m.predict_proba(X)[:, 1]
+                        high  = int((proba > 0.9).sum())
+                        med   = int(((proba > 0.5) & (proba <= 0.9)).sum())
+                        low   = int((proba <= 0.5).sum())
+                        insight = {
+                            "model":   "XGBoost",
+                            "desc":    "Gradient Boosting. Каждое дерево исправляет\nошибки предыдущего. Агрессивнее RF.",
+                            "metrics": [
+                                ("Высокая уверен. >90%", f"{high} записей"),
+                                ("Средняя 50-90%",       f"{med} записей"),
+                                ("Низкая <50%",          f"{low} записей"),
+                            ]
+                        }
+                    except Exception as e:
+                        log_ui(f"[!] XGB не найден: {e}")
+                        preds = self.rf.predict(X)
+                        proba = self.rf.predict_proba(X)[:, 1]
+                        insight = {"model": "RF (fallback)", "desc": "", "metrics": []}
+
+                elif model_used == "ISO":
+                    try:
+                        iso   = joblib.load("models/iso_cicids.pkl")
+                        preds = (iso.predict(X) == -1).astype(int)
+                        scores = iso.score_samples(X)
+                        proba  = np.abs(scores)
+                        proba  = (proba - proba.min()) / (proba.max() - proba.min() + 1e-9)
+                        insight = {
+                            "model":   "Isolation Forest",
+                            "desc":    "Unsupervised. Не знает меток — ищет выбросы.\nИзолирует точки случайными разрезами.",
+                            "metrics": [
+                                ("Средний score",  f"{round(scores.mean(), 3)}"),
+                                ("Мин. score",     f"{round(scores.min(), 3)} (самая аномальная)"),
+                                ("Порог изоляции", f"{round(float(np.percentile(scores, 10)), 3)}"),
+                            ]
+                        }
+                    except Exception as e:
+                        log_ui(f"[!] ISO не найден: {e}")
+                        preds = self.rf.predict(X)
+                        proba = self.rf.predict_proba(X)[:, 1]
+                        insight = {"model": "RF (fallback)", "desc": "", "metrics": []}
+
+                elif model_used == "ALL":
+                    try:
+                        xgb_m  = joblib.load("models/xgb_cicids.pkl")
+                        iso    = joblib.load("models/iso_cicids.pkl")
+                        rf_p   = self.rf.predict(X)
+                        xgb_p  = xgb_m.predict(X)
+                        iso_p  = (iso.predict(X) == -1).astype(int)
+                        votes  = rf_p + xgb_p + iso_p
+                        preds  = (votes >= 2).astype(int)
+                        proba  = self.rf.predict_proba(X)[:, 1]
+                        cons3  = int((votes == 3).sum())
+                        cons2  = int((votes == 2).sum())
+                        cons1  = int((votes == 1).sum())
+                        insight = {
+                            "model":   "Ensemble (RF + XGB + ISO)",
+                            "desc":    "Голосование большинством. Аномалия\nтолько если 2 из 3 моделей согласны.",
+                            "metrics": [
+                                ("Консенсус 3/3", f"{cons3} записей — критично"),
+                                ("Консенсус 2/3", f"{cons2} записей — подозрительно"),
+                                ("Единственный голос", f"{cons1} записей — возможно ложное"),
+                            ]
+                        }
+                    except Exception as e:
+                        log_ui(f"[!] Ансамбль ошибка: {e}")
+                        preds = self.rf.predict(X)
+                        proba = self.rf.predict_proba(X)[:, 1]
+                        insight = {"model": "RF (fallback)", "desc": "", "metrics": []}
             else:
                 log_ui("[!] Модель не загружена — демо-режим")
                 preds = np.random.choice([0, 1], size=len(df), p=[0.75, 0.25])
@@ -882,11 +1250,14 @@ class RootkitGuard(ctk.CTk):
             }
             self._store_scan(data, path, ts)
             self._print_results(log_ui, data, "локальный")
+            if insight:
+                self.after(0, lambda i=insight: self._show_model_insight(i))
             self.scan_progress.set(1.0)
-            notify_threat(threat, f"{Path(path).name}: {n_anom} аномалий ({pct:.1f}%)")
+            if not getattr(self, "_parallel_scan", False): notify_threat(threat, f"{Path(path).name}: {n_anom} аномалий ({pct:.1f}%)")
             # При ВЫСОКОЙ угрозе — автоматически запускаем Rootkit Scan
             if threat == "ВЫСОКАЯ":
-                log_ui("\n  🔴 ВЫСОКАЯ УГРОЗА — автоматически запускаю Rootkit Scan...")
+                if not getattr(self, "_parallel_scan", False): log_ui("\n  🔴 ВЫСОКАЯ УГРОЗА — запускаю Auto Defense Mode...")
+                if not getattr(self, "_parallel_scan", False): self.after(500, lambda d=data: self._show_defense_modal(d))
                 self.after(1000, lambda: threading.Thread(
                     target=self._run_rootkit_local, daemon=True).start())
 
@@ -971,7 +1342,473 @@ class RootkitGuard(ctk.CTk):
 
         self.scan_status.configure(
             text=f"✓ Готово — угроза: {threat}", text_color=threat_color)
+        self.after(0, lambda d=data, th=threat, c=threat_color: 
+                   self._show_threat_panel(d, th, c))
+        # Показываем Threat Intelligence Panel
+        self.after(0, lambda d=data, t=threat, c=threat_color: 
+                   self._show_threat_panel(d, t, c))
 
+    def _show_api_ai_panel(self, data: dict):
+        if hasattr(self, '_insight_panel'):
+            try:
+                self._insight_panel.destroy()
+            except Exception:
+                pass
+        self._insight_panel = ctk.CTkFrame(
+            self.pages["scan"], fg_color="#0d1117",
+            corner_radius=12, border_width=1, border_color="#00d4ff")
+        self._insight_panel.pack(fill="x", padx=20, pady=(0, 4))
+        self._ai_font_size = 11
+        self._ai_result_lbl = ctk.CTkTextbox(
+            self._insight_panel, height=0,
+            font=ctk.CTkFont(size=11),
+            fg_color="transparent", text_color="#94a3b8", wrap="word")
+        self._ai_result_lbl.pack(fill="x", padx=12, pady=(8, 4))
+        self._ai_result_lbl.pack_forget()
+        self._ai_zoom_row = ctk.CTkFrame(self._insight_panel, fg_color="transparent")
+        self._ai_zoom_row.pack_forget()
+        insight = {"model": "API", "desc": "", "metrics": [
+            ("Всего", str(data.get("total_rows", 0))),
+            ("Аномалий", str(data.get("anomalies", 0))),
+            ("Угроза", data.get("threat", "—")),
+        ]}
+        ctk.CTkButton(
+            self._insight_panel,
+            text=t("🤖  Спросить AI"),                 
+            height=36, corner_radius=8,
+            fg_color="#1e293b", hover_color="#2d3748",
+            font=ctk.CTkFont(size=12),
+            command=lambda i=insight: threading.Thread(
+                target=self._ai_analyze, args=(i,), daemon=True).start()
+        ).pack(fill="x", padx=12, pady=(8, 8))
+        
+    def _show_model_insight(self, insight: dict):
+        if hasattr(self, '_insight_panel'):
+            try:
+                self._insight_panel.destroy()
+            except Exception:
+                pass
+
+        colors = {
+            "Random Forest":          "#0ea5e9",
+            "XGBoost":                "#a855f7",
+            "Isolation Forest":       "#f59e0b",
+            "Ensemble (RF + XGB + ISO)": "#00ff88",
+        }
+        color = colors.get(insight.get("model", ""), "#00d4ff")
+
+        self._insight_panel = ctk.CTkFrame(
+            self.pages["scan"], fg_color="#0d1117",
+            corner_radius=12, border_width=1, border_color=color)
+        self._insight_panel.pack(fill="x", padx=20, pady=(0, 4))
+
+        # Заголовок
+        hdr = ctk.CTkFrame(self._insight_panel, fg_color="transparent")
+        hdr.pack(fill="x", padx=12, pady=(8, 4))
+        ctk.CTkLabel(hdr, text=f"🧠  {insight.get('model', 'Model')} — Insight",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=color).pack(side="left")
+
+        content = ctk.CTkFrame(self._insight_panel, fg_color="transparent")
+        content.pack(fill="x", padx=12, pady=(0, 10))
+        content.grid_columnconfigure(0, weight=2)
+        content.grid_columnconfigure(1, weight=3)
+
+        # Описание
+        desc_col = ctk.CTkFrame(content, fg_color="#0a0e1a", corner_radius=8)
+        desc_col.grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=4)
+        ctk.CTkLabel(desc_col, text="Как работает:",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w", padx=10, pady=(8, 2))
+        ctk.CTkLabel(desc_col, text=insight.get("desc", ""),
+                     font=ctk.CTkFont(size=11),
+                     text_color="#94a3b8", justify="left").pack(anchor="w", padx=10, pady=(0, 8))
+
+        # Метрики
+        metrics_col = ctk.CTkFrame(content, fg_color="transparent")
+        metrics_col.grid(row=0, column=1, sticky="ew")
+        for label, val in insight.get("metrics", []):
+            row = ctk.CTkFrame(metrics_col, fg_color="#0a0e1a", corner_radius=6)
+            row.pack(fill="x", pady=2)
+            ctk.CTkLabel(row, text=label,
+                         font=ctk.CTkFont(size=10), text_color="#475569",
+                         width=180, anchor="w").pack(side="left", padx=10, pady=6)
+            ctk.CTkLabel(row, text=val,
+                         font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color=color).pack(side="left", padx=6)
+        
+        # Кнопка AI анализа
+        ai_btn = ctk.CTkButton(
+            self._insight_panel,
+            text="🤖  Спросить AI",
+            height=36, corner_radius=8,
+            fg_color="#1e293b", hover_color="#2d3748",
+            font=ctk.CTkFont(size=12),
+            command=lambda i=insight: threading.Thread(
+                target=self._ai_analyze, args=(i,), daemon=True).start())
+        ai_btn.pack(fill="x", padx=12, pady=(0, 8))
+
+        self._ai_result_lbl = ctk.CTkTextbox(
+            self._insight_panel, height=0,
+            font=ctk.CTkFont(size=11),
+            fg_color="transparent", text_color="#94a3b8",
+            wrap="word")
+        self._ai_result_lbl.pack(fill="x", padx=12, pady=(0, 4))
+        self._ai_result_lbl.pack_forget()
+
+        # Зум кнопки
+        self._ai_font_size = 11
+        zoom_row = ctk.CTkFrame(self._insight_panel, fg_color="transparent")
+        zoom_row.pack(fill="x", padx=12, pady=(0, 10))
+        ctk.CTkButton(zoom_row, text="A−", width=36, height=24,
+                      fg_color="#1e293b", hover_color="#2d3748",
+                      font=ctk.CTkFont(size=11), corner_radius=6,
+                      command=lambda: self._ai_zoom(-1)).pack(side="left", padx=(0,4))
+        ctk.CTkButton(zoom_row, text="A+", width=36, height=24,
+                      fg_color="#1e293b", hover_color="#2d3748",
+                      font=ctk.CTkFont(size=11), corner_radius=6,
+                      command=lambda: self._ai_zoom(1)).pack(side="left")
+        zoom_row.pack_forget()
+        self._ai_zoom_row = zoom_row
+
+    def _ai_zoom(self, delta: int):
+        self._ai_font_size = max(9, min(18, self._ai_font_size + delta))
+        self._ai_result_lbl.configure(
+            font=ctk.CTkFont(size=self._ai_font_size))
+        
+    def _ai_analyze(self, insight: dict):
+        try:
+            import anthropic
+            self.after(0, lambda: [
+                self._ai_result_lbl.configure(height=80),
+                self._ai_result_lbl.pack(fill="x", padx=12, pady=(0, 8)),
+                self._ai_result_lbl.configure(state="normal"),
+                self._ai_result_lbl.delete("1.0", "end"),
+                self._ai_result_lbl.insert("end", "🤖 Анализирую..."),
+                self._ai_result_lbl.configure(state="disabled"),
+            ])
+
+            api_key = cfg.get("anthropic", {}).get("api_key", "")
+            client  = anthropic.Anthropic(api_key=api_key)
+
+            scan = self._last_scan
+            lang_map = {"ru": "русском", "en": "английском", "kz": "қазақ"}
+
+            prompt = f"""Ты эксперт по кибербезопасности. Проанализируй результаты сканирования сети:
+
+Модель: {insight.get('model')}
+Всего записей: {scan.get('total', 0)}
+Нормальных: {scan.get('normal', 0)}
+Аномалий: {scan.get('anomaly', 0)} ({scan.get('pct', 0):.1f}%)
+Уровень угрозы: {scan.get('threat', '—')}
+Атакованные порты: {scan.get('top_ports', [])}
+
+Метрики модели:
+{chr(10).join([f"- {k}: {v}" for k, v in insight.get('metrics', [])])}
+
+Напиши краткий анализ (3-4 предложения):
+1. Что обнаружено
+2. Насколько опасно
+3. Что делать
+
+Отвечай на {lang_map.get(get_lang(), "русском")} языке. Кратко и по делу."""
+
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=300,
+                messages=[{"role": "user", "content": prompt}])
+
+            result = message.content[0].text
+
+            self.after(0, lambda r=result: [
+                self._ai_result_lbl.configure(state="normal", height=150),
+                self._ai_zoom_row.pack(fill="x", padx=12, pady=(0, 10)),
+                self._ai_result_lbl.delete("1.0", "end"),
+                self._ai_result_lbl.insert("end", f"🤖 AI: {r}"),
+                self._ai_result_lbl.configure(state="disabled"),
+            ])
+
+        except Exception as e:
+            self.after(0, lambda err=str(e): [
+                self._ai_result_lbl.configure(state="normal"),
+                self._ai_result_lbl.delete("1.0", "end"),
+                self._ai_result_lbl.insert("end", f"[!] Ошибка AI: {err}"),
+                self._ai_result_lbl.configure(state="disabled"),
+            ])
+                   
+    def _show_threat_panel(self, data: dict, threat: str, color: str):
+        # Удаляем старую панель если есть
+        if hasattr(self, '_threat_panel') and self._threat_panel.winfo_exists():
+            self._threat_panel.destroy()
+
+        total  = data.get("total_rows", 1)
+        anom   = data.get("anomalies", 0)
+        norm   = data.get("normal", 0)
+        pct    = data.get("pct", 0.0)
+        ports  = data.get("top_ports", [])
+
+        # Панель появляется между карточками и логом
+        self._threat_panel = ctk.CTkFrame(
+            self.pages["scan"], fg_color="#0d1117",
+            corner_radius=12, border_width=1, border_color=color)
+        self._threat_panel.pack(fill="x", padx=20, pady=(0, 4),
+                                 before=self.scan_result.master.master)
+
+        # Заголовок
+        hdr = ctk.CTkFrame(self._threat_panel, fg_color="transparent")
+        hdr.pack(fill="x", padx=12, pady=(8, 4))
+        icon = "🔴" if threat == "ВЫСОКАЯ" else "🟡" if threat == "СРЕДНЯЯ" else "🟢"
+        ctk.CTkLabel(hdr, text=f"{icon}  THREAT INTELLIGENCE",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=color).pack(side="left")
+        ctk.CTkLabel(hdr, text=f"{threat}  ·  {pct:.1f}% anomalies",
+                     font=ctk.CTkFont(size=11),
+                     text_color="#475569").pack(side="right")
+
+        content = ctk.CTkFrame(self._threat_panel, fg_color="transparent")
+        content.pack(fill="x", padx=12, pady=(0, 10))
+        content.grid_columnconfigure(0, weight=2)
+        content.grid_columnconfigure(1, weight=1)
+        content.grid_columnconfigure(2, weight=1)
+
+        # Визуальный бар нормальные vs аномалии
+        bar_col = ctk.CTkFrame(content, fg_color="transparent")
+        bar_col.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+        ctk.CTkLabel(bar_col, text="Traffic Distribution",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
+        bar_bg = ctk.CTkFrame(bar_col, fg_color="#1e293b",
+                               corner_radius=6, height=20)
+        bar_bg.pack(fill="x", pady=(4, 0))
+        bar_bg.pack_propagate(False)
+        norm_w = max(int(bar_bg.winfo_reqwidth() * (norm / max(total, 1))), 4)
+        anom_pct_w = max(int(400 * (norm / max(total, 1))), 4)
+        norm_bar = ctk.CTkFrame(bar_bg, fg_color="#2dc97e",
+                                 corner_radius=6, height=20,
+                                 width=anom_pct_w)
+        norm_bar.place(x=0, y=0)
+        anom_w = max(int(400 * (anom / max(total, 1))), 4)
+        anom_bar = ctk.CTkFrame(bar_bg, fg_color=color,
+                                 corner_radius=6, height=20,
+                                 width=anom_w)
+        anom_bar.place(x=anom_pct_w, y=0)
+        ctk.CTkLabel(bar_col,
+                     text=f"🟢 Normal: {norm:,}   {icon} Anomaly: {anom:,}",
+                     font=ctk.CTkFont(size=10),
+                     text_color="#64748b").pack(anchor="w", pady=(2, 0))
+
+        # Топ порты
+        ports_col = ctk.CTkFrame(content, fg_color="transparent")
+        ports_col.grid(row=0, column=1, sticky="ew", padx=(0, 12))
+        ctk.CTkLabel(ports_col, text="Top Attack Ports",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
+        if ports:
+            for p in ports[:3]:
+                pf = ctk.CTkFrame(ports_col, fg_color="#1e293b", corner_radius=4)
+                pf.pack(fill="x", pady=1)
+                ctk.CTkLabel(pf, text=f"  :{p}",
+                             font=ctk.CTkFont(size=10, weight="bold"),
+                             text_color=color).pack(side="left", padx=6, pady=3)
+        else:
+            ctk.CTkLabel(ports_col, text="No suspicious ports",
+                         font=ctk.CTkFont(size=10),
+                         text_color="#475569").pack(anchor="w", pady=4)
+
+        # Рекомендация
+        rec_col = ctk.CTkFrame(content, fg_color="transparent")
+        rec_col.grid(row=0, column=2, sticky="ew")
+        ctk.CTkLabel(rec_col, text="Recommendation",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
+        rec = {
+            "ВЫСОКАЯ": "🚨 Block suspicious\nports immediately.\nRun Rootkit Scan.",
+            "СРЕДНЯЯ": "⚡ Monitor processes.\nCheck open ports.\nRescan in 1h.",
+            "НИЗКАЯ":  "✅ System is clean.\nNext scan: 24h.\nNo action needed.",
+        }.get(threat, "Run full scan.")
+        ctk.CTkLabel(rec_col, text=rec,
+                     font=ctk.CTkFont(size=10),
+                     text_color="#94a3b8", justify="left").pack(anchor="w", pady=4)
+
+    def _show_threat_panel(self, data: dict, threat: str, color: str):
+        if hasattr(self, '_threat_panel'):
+            try:
+                self._threat_panel.destroy()
+            except Exception:
+                pass
+        total = data.get("total_rows", 1)
+        anom  = data.get("anomalies", 0)
+        norm  = data.get("normal", 0)
+        pct   = data.get("pct", 0.0)
+        ports = data.get("top_ports", [])
+        icon  = "🔴" if threat == "ВЫСОКАЯ" else "🟡" if threat == "СРЕДНЯЯ" else "🟢"
+        self._threat_panel = ctk.CTkFrame(
+            self.pages["scan"], fg_color="#0d1117",
+            corner_radius=12, border_width=1, border_color=color)
+        self._threat_panel.pack(fill="x", padx=20, pady=(0, 4))
+        hdr = ctk.CTkFrame(self._threat_panel, fg_color="transparent")
+        hdr.pack(fill="x", padx=12, pady=(8, 4))
+        ctk.CTkLabel(hdr, text=f"{icon}  THREAT INTELLIGENCE",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=color).pack(side="left")
+        ctk.CTkLabel(hdr, text=f"{threat}  ·  {pct:.1f}% anomalies",
+                     font=ctk.CTkFont(size=11),
+                     text_color="#475569").pack(side="right")
+        content = ctk.CTkFrame(self._threat_panel, fg_color="transparent")
+        content.pack(fill="x", padx=12, pady=(0, 10))
+        content.grid_columnconfigure(0, weight=2)
+        content.grid_columnconfigure(1, weight=1)
+        content.grid_columnconfigure(2, weight=1)
+        bar_col = ctk.CTkFrame(content, fg_color="transparent")
+        bar_col.grid(row=0, column=0, sticky="ew", padx=(0, 12))
+        ctk.CTkLabel(bar_col, text="Traffic Distribution",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
+        bar_bg = ctk.CTkFrame(bar_col, fg_color="#1e293b", corner_radius=6, height=20)
+        bar_bg.pack(fill="x", pady=(4, 2))
+        bar_bg.pack_propagate(False)
+        norm_w = max(int(400 * (norm / max(total, 1))), 4)
+        anom_w = max(int(400 * (anom / max(total, 1))), 4)
+        ctk.CTkFrame(bar_bg, fg_color="#2dc97e", corner_radius=6,
+                     height=20, width=norm_w).place(x=0, y=0)
+        ctk.CTkFrame(bar_bg, fg_color=color, corner_radius=6,
+                     height=20, width=anom_w).place(x=norm_w, y=0)
+        ctk.CTkLabel(bar_col, text=f"🟢 Normal: {norm:,}   {icon} Anomaly: {anom:,}",
+                     font=ctk.CTkFont(size=10), text_color="#64748b").pack(anchor="w")
+        ports_col = ctk.CTkFrame(content, fg_color="transparent")
+        ports_col.grid(row=0, column=1, sticky="ew", padx=(0, 12))
+        ctk.CTkLabel(ports_col, text="Top Attack Ports",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
+        if ports:
+            for p in ports[:3]:
+                pf = ctk.CTkFrame(ports_col, fg_color="#1e293b", corner_radius=4)
+                pf.pack(fill="x", pady=1)
+                ctk.CTkLabel(pf, text=f"  :{p}",
+                             font=ctk.CTkFont(size=10, weight="bold"),
+                             text_color=color).pack(side="left", padx=6, pady=3)
+        else:
+            ctk.CTkLabel(ports_col, text="No suspicious ports",
+                         font=ctk.CTkFont(size=10),
+                         text_color="#475569").pack(anchor="w", pady=4)
+        rec_col = ctk.CTkFrame(content, fg_color="transparent")
+        rec_col.grid(row=0, column=2, sticky="ew")
+        ctk.CTkLabel(rec_col, text="Recommendation",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
+        rec = {
+            "ВЫСОКАЯ": "🚨 Block suspicious\nports immediately.\nRun Rootkit Scan.",
+            "СРЕДНЯЯ": "⚡ Monitor processes.\nCheck open ports.\nRescan in 1h.",
+            "НИЗКАЯ":  "✅ System is clean.\nNext scan: 24h.\nNo action needed.",
+        }.get(threat, "Run full scan.")
+        ctk.CTkLabel(rec_col, text=rec, font=ctk.CTkFont(size=10),
+                     text_color="#94a3b8", justify="left").pack(anchor="w", pady=4)
+
+
+    def _show_defense_modal(self, data: dict):
+        ports = data.get("top_ports", [])
+        pct   = data.get("pct", 0.0)
+
+        modal = ctk.CTkToplevel(self)
+        modal.title("🔴 Auto Defense Mode")
+        modal.geometry("500x480")
+        modal.resizable(False, False)
+        modal.configure(fg_color="#0a0e1a")
+        modal.grab_set()
+        modal.lift()
+
+        # Заголовок
+        hdr = ctk.CTkFrame(modal, fg_color="#1a0000", corner_radius=10,
+                            border_width=1, border_color="#e74c3c")
+        hdr.pack(fill="x", padx=20, pady=(20, 10))
+        ctk.CTkLabel(hdr, text="🔴  ВЫСОКАЯ УГРОЗА ОБНАРУЖЕНА",
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="#e74c3c").pack(pady=(12, 4))
+        ctk.CTkLabel(hdr, text=f"Аномалий: {data.get('anomalies',0):,}  ({pct:.1f}%)  ·  Атакованные порты: {ports[:3]}",
+                     font=ctk.CTkFont(size=11),
+                     text_color="#94a3b8").pack(pady=(0, 12))
+
+        # Шаги защиты
+        ctk.CTkLabel(modal, text="Выбери действия для защиты:",
+                     font=ctk.CTkFont(size=12, weight="bold"),
+                     text_color="#64748b").pack(anchor="w", padx=20, pady=(0, 8))
+
+        # Статус лог
+        status_box = ctk.CTkTextbox(modal, height=120,
+                                     font=ctk.CTkFont(family="monospace", size=11),
+                                     fg_color="#0d1117", text_color="#64748b")
+        status_box.pack(fill="x", padx=20, pady=(0, 10))
+        status_box.insert("end", "[READY] Auto Defense Mode активирован\n")
+        status_box.insert("end", f"[INFO]  Обнаружено {data.get('anomalies',0)} аномалий\n")
+        if ports:
+            status_box.insert("end", f"[WARN]  Атакованные порты: {ports}\n")
+        status_box.configure(state="disabled")
+
+        def log_modal(msg):
+            status_box.configure(state="normal")
+            status_box.insert("end", msg + "\n")
+            status_box.see("end")
+            status_box.configure(state="disabled")
+
+        # Кнопки действий
+        def run_rootkit():
+            log_modal("[*] Запускаю Rootkit Scan...")
+            modal.after(300, lambda: threading.Thread(
+                target=self._run_rootkit_local, daemon=True).start())
+            self.show_page("rootkit")
+            modal.destroy()
+
+        def block_ports():
+            if not ports:
+                log_modal("[!] Нет подозрительных портов для блокировки")
+                return
+            log_modal("[*] Генерирую правила iptables...")
+            rules = []
+            for p in ports[:5]:
+                rules.append(f"iptables -A INPUT -p tcp --dport {p} -j DROP")
+            log_modal("[+] Правила для блокировки:")
+            for r in rules:
+                log_modal(f"    {r}")
+            log_modal("[!] Скопируй и выполни в терминале от root")
+            # Копируем в буфер
+            self.clipboard_clear()
+            self.clipboard_append("\n".join(rules))
+            log_modal("[✓] Скопировано в буфер обмена")
+
+        def create_report():
+            log_modal("[*] Создаю PDF отчёт...")
+            threading.Thread(target=self._gen_pdf_report, daemon=True).start()
+            log_modal("[✓] Отчёт генерируется...")
+
+        btns = ctk.CTkFrame(modal, fg_color="transparent")
+        btns.pack(fill="x", padx=20, pady=(0, 10))
+        btns.grid_columnconfigure(0, weight=1)
+        btns.grid_columnconfigure(1, weight=1)
+        btns.grid_columnconfigure(2, weight=1)
+
+        ctk.CTkButton(btns, text="🦠  Rootkit Scan",
+                      height=42, corner_radius=8,
+                      fg_color="#7a1e1e", hover_color="#c0392b",
+                      font=ctk.CTkFont(size=12, weight="bold"),
+                      command=run_rootkit
+                      ).grid(row=0, column=0, padx=4, sticky="ew")
+
+        ctk.CTkButton(btns, text="🔒  Блокировать порты",
+                      height=42, corner_radius=8,
+                      fg_color="#1a3a1a", hover_color="#2d6a4f",
+                      font=ctk.CTkFont(size=12, weight="bold"),
+                      command=block_ports
+                      ).grid(row=0, column=1, padx=4, sticky="ew")
+
+        ctk.CTkButton(btns, text="📕  PDF отчёт",
+                      height=42, corner_radius=8,
+                      fg_color="#1a1a3a", hover_color="#1f538d",
+                      font=ctk.CTkFont(size=12, weight="bold"),
+                      command=create_report
+                      ).grid(row=0, column=2, padx=4, sticky="ew")
+
+        ctk.CTkButton(modal, text="✕  Закрыть",
+                      height=36, corner_radius=8,
+                      fg_color="transparent", border_width=1,
+                      border_color="#2d3748",
+                      text_color="#64748b",
+                      font=ctk.CTkFont(size=12),
+                      command=modal.destroy
+                      ).pack(pady=(0, 20))
+            
     def _update_scan_history(self):
         self.scan_history_box.configure(state="normal")
         self.scan_history_box.delete("1.0", "end")
@@ -986,78 +1823,134 @@ class RootkitGuard(ctk.CTk):
 
     def _page_rootkit(self):
         frame = ctk.CTkFrame(self.main, fg_color="transparent")
-        ctk.CTkLabel(frame, text="Rootkit Scan",
-                     font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(10, 3))
-        ctk.CTkLabel(frame,
-                     text="Полная проверка: скрытые процессы · модули ядра · LD_PRELOAD · привилегии",
-                     font=ctk.CTkFont(size=12), text_color="gray").pack(pady=(0, 8))
 
-        ctrl = ctk.CTkFrame(frame)
-        ctrl.pack(fill="x", padx=20, pady=5)
-        self.rk_status = ctk.CTkLabel(ctrl, text="Готов к сканированию",
-                                       text_color="gray", font=ctk.CTkFont(size=13))
-        self.rk_status.pack(side="left", padx=15, pady=10)
-        self.rk_threat_lbl = ctk.CTkLabel(ctrl, text="",
-                                           font=ctk.CTkFont(size=14, weight="bold"))
+        # Заголовок
+        hdr = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                            border_width=1, border_color="#1e293b")
+        hdr.pack(fill="x", padx=16, pady=(8, 6))
+        hdr.pack_propagate(False)
+        hdr.configure(height=52)
+        ctk.CTkLabel(hdr, text="🦠  ROOTKIT SCAN",
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="#e74c3c").pack(side="left", padx=16, pady=14)
+        self.rk_threat_lbl = ctk.CTkLabel(hdr, text="",
+                                           font=ctk.CTkFont(size=13, weight="bold"))
         self.rk_threat_lbl.pack(side="left", padx=10)
-
-        btns = ctk.CTkFrame(ctrl, fg_color="transparent")
-        btns.pack(side="right", padx=10)
-        ctk.CTkButton(btns, text="▶  Полная проверка системы", width=200, height=38,
-                      fg_color="#7a1e1e",
+        btns = ctk.CTkFrame(hdr, fg_color="transparent")
+        btns.pack(side="right", padx=12)
+        ctk.CTkButton(btns, text="▶  Запустить", width=140, height=34,
+                      fg_color="#7a1e1e", hover_color="#c0392b",
+                      corner_radius=8,
+                      font=ctk.CTkFont(size=12, weight="bold"),
                       command=lambda: threading.Thread(
                           target=self._run_rootkit_local, daemon=True).start()
-                      ).pack(side="left", padx=5, pady=8)
-        ctk.CTkButton(btns, text="API", width=80, height=38,
-                      fg_color="#1f538d",
+                      ).pack(side="left", padx=(0, 6), pady=8)
+        ctk.CTkButton(btns, text="API", width=60, height=34,
+                      fg_color="#1e293b", hover_color="#2d3748",
+                      corner_radius=8, font=ctk.CTkFont(size=12),
                       command=lambda: threading.Thread(
                           target=self._run_rootkit_api, daemon=True).start()
-                      ).pack(side="left", padx=5)
+                      ).pack(side="left")
 
-        # Карточки 6 проверок
-        cf = ctk.CTkFrame(frame, fg_color="#1a1a2e", corner_radius=10)
-        cf.pack(fill="x", padx=20, pady=5)
+        # Security Score
+        score_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                    border_width=1, border_color="#1e293b")
+        score_frame.pack(fill="x", padx=16, pady=(0, 6))
+        score_inner = ctk.CTkFrame(score_frame, fg_color="transparent")
+        score_inner.pack(side="left", padx=20, pady=12)
+        ctk.CTkLabel(score_inner, text="Security Score",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
+        self.rk_score_lbl = ctk.CTkLabel(score_inner, text="—",
+                                          font=ctk.CTkFont(size=32, weight="bold"),
+                                          text_color="#475569")
+        self.rk_score_lbl.pack(anchor="w")
+        self.rk_status = ctk.CTkLabel(score_frame, text="Готов к сканированию",
+                                       text_color="#475569",
+                                       font=ctk.CTkFont(size=12))
+        self.rk_status.pack(side="left", padx=20)
+
+        # Прогресс
+        self.rk_progress = ctk.CTkProgressBar(frame, height=6, corner_radius=3,
+                                               progress_color="#e74c3c")
+        self.rk_progress.pack(fill="x", padx=16, pady=(0, 6))
+        self.rk_progress.set(0)
+
+        # 6 карточек проверок
+        cf = ctk.CTkFrame(frame, fg_color="transparent")
+        cf.pack(fill="x", padx=16, pady=(0, 6))
         self._rk_cards = []
         checks_info = [
-            ("Скрытые\nпроцессы",  "🔎"),
-            ("Модули\nядра",        "🧩"),
-            ("LD_PRELOAD",          "💉"),
-            ("Подозр.\nпорты",      "🔌"),
-            ("Системные\nфайлы",    "📁"),
-            ("Привилегии\nUID=0",   "🔑"),
+            ("Скрытые\nпроцессы", "🔎"),
+            ("Модули\nядра",       "🧩"),
+            ("LD_PRELOAD",         "💉"),
+            ("Подозр.\nпорты",     "🔌"),
+            ("Системные\nфайлы",   "📁"),
+            ("Привилегии\nUID=0",  "🔑"),
         ]
         for i, (label, icon) in enumerate(checks_info):
-            card = ctk.CTkFrame(cf, fg_color="#2b2b2b", corner_radius=8)
-            card.grid(row=0, column=i, padx=6, pady=8, sticky="ew")
             cf.grid_columnconfigure(i, weight=1)
+            card = ctk.CTkFrame(cf, fg_color="#0d1117", corner_radius=10,
+                                border_width=1, border_color="#1e293b", height=90)
+            card.grid(row=0, column=i, padx=4, sticky="ew")
+            card.grid_propagate(False)
             ctk.CTkLabel(card, text=icon,
-                         font=ctk.CTkFont(size=20)).pack(pady=(8, 2))
-            ctk.CTkLabel(card, text=label, font=ctk.CTkFont(size=11),
-                         text_color="lightgray", justify="center").pack()
-            lbl = ctk.CTkLabel(card, text="—",
-                               font=ctk.CTkFont(size=13, weight="bold"),
-                               text_color="gray")
+                         font=ctk.CTkFont(size=18)).pack(pady=(10, 2))
+            ctk.CTkLabel(card, text=label,
+                         font=ctk.CTkFont(size=10),
+                         text_color="#475569", justify="center").pack()
+            lbl = ctk.CTkLabel(card, text="○",
+                               font=ctk.CTkFont(size=11),
+                               text_color="#475569")
             lbl.pack(pady=(2, 8))
             self._rk_cards.append((card, lbl))
 
-        self.rk_progress = ctk.CTkProgressBar(frame)
-        self.rk_progress.pack(fill="x", padx=20, pady=(4, 0))
-        self.rk_progress.set(0)
+        # System DNA
+        dna_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                  border_width=1, border_color="#1e293b")
+        dna_frame.pack(fill="x", padx=16, pady=(0, 6))
+        dna_hdr = ctk.CTkFrame(dna_frame, fg_color="transparent")
+        dna_hdr.pack(fill="x", padx=12, pady=(8, 4))
+        ctk.CTkLabel(dna_hdr, text="🧬  System DNA",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color="#475569").pack(side="left")
+        self.rk_dna_lbl = ctk.CTkLabel(dna_hdr, text="Нет данных",
+                                        font=ctk.CTkFont(size=10),
+                                        text_color="#475569")
+        self.rk_dna_lbl.pack(side="right")
+        self.rk_dna_box = ctk.CTkTextbox(dna_frame, height=60,
+                                          font=ctk.CTkFont(family="monospace", size=10),
+                                          fg_color="transparent",
+                                          text_color="#475569")
+        self.rk_dna_box.pack(fill="x", padx=8, pady=(0, 8))
+        self.rk_dna_box.insert("end", "Запусти сканирование чтобы создать первый снимок системы")
+        self.rk_dna_box.configure(state="disabled")
+
+        # AI панель
+        self.rk_ai_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                         border_width=1, border_color="#1e293b")
+        self.rk_ai_frame.pack(fill="x", padx=16, pady=(0, 6))
+        self.rk_ai_frame.pack_forget()
 
         self.rk_output = ctk.CTkTextbox(
-            frame, font=ctk.CTkFont(family="monospace", size=12))
-        self.rk_output.pack(fill="both", expand=True, padx=20, pady=5)
+            frame, font=ctk.CTkFont(family="monospace", size=11),
+            fg_color="#0d1117", text_color="#475569")
+        self.rk_output.pack(fill="both", expand=True, padx=16, pady=(0, 10))
         return frame
 
     def _run_rootkit_local(self):
+        import json
+        from pathlib import Path
+
         self.rk_output.configure(state="normal")
         self.rk_output.delete("1.0", "end")
-        self.rk_status.configure(text="Сканирование системы...", text_color="yellow")
+        self.rk_status.configure(text="Сканирование...", text_color="yellow")
+        self.rk_score_lbl.configure(text="...", text_color="#f39c12")
         self.rk_progress.set(0)
-        # Сброс карточек
+        self.rk_threat_lbl.configure(text="")
+
         for card, lbl in self._rk_cards:
-            card.configure(fg_color="#2b2b2b")
-            lbl.configure(text="...", text_color="gray")
+            card.configure(border_color="#1e293b", fg_color="#0d1117")
+            lbl.configure(text="○", text_color="#475569")
 
         def log_ui(msg):
             self.rk_output.insert("end", msg + "\n")
@@ -1066,59 +1959,129 @@ class RootkitGuard(ctk.CTk):
         try:
             checker = RootkitChecker()
             check_fns = [
-                ("Скрытые процессы",    checker.check_hidden_processes),
-                ("Модули ядра",         checker.check_kernel_modules),
-                ("LD_PRELOAD",          checker.check_ld_preload),
-                ("Подозр. порты",       checker.check_suspicious_ports),
-                ("Системные файлы",     checker.check_system_files),
-                ("Привилегии",          checker.check_privilege_escalation),
+                ("Скрытые процессы",  checker.check_hidden_processes),
+                ("Модули ядра",        checker.check_kernel_modules),
+                ("LD_PRELOAD",         checker.check_ld_preload),
+                ("Подозр. порты",      checker.check_suspicious_ports),
+                ("Системные файлы",    checker.check_system_files),
+                ("Привилегии",         checker.check_privilege_escalation),
             ]
             all_findings = []
+            current_dna = {
+                "processes": [],
+                "ports":     [],
+                "modules":   [],
+            }
 
             for idx, (name, fn) in enumerate(check_fns):
-                self.rk_progress.set((idx + 1) / len(check_fns))
-                log_ui(f"[{idx+1}/6] {name}...")
+                progress = (idx + 1) / len(check_fns)
+                self.after(0, lambda p=progress: self.rk_progress.set(p))
                 try:
                     findings = fn()
                     all_findings.extend(findings)
                     card, lbl = self._rk_cards[idx]
                     if findings:
                         self.after(0, lambda c=card, l=lbl, n=len(findings): (
-                            c.configure(fg_color="#4a1a1a"),
+                            c.configure(border_color="#e74c3c", fg_color="#1a0000"),
                             l.configure(text=f"⚠ {n}", text_color="#e74c3c")))
                         for f in findings:
                             icon = "🔴" if f.severity == "ВЫСОКАЯ" else "🟡"
-                            log_ui(f"   {icon} {f.description}")
-                            if f.detail:
-                                log_ui(f"      → {f.detail[:100]}")
+                            log_ui(f"  {icon} [{name}] {f.description}")
                     else:
                         self.after(0, lambda c=card, l=lbl: (
-                            c.configure(fg_color="#1a3a1a"),
-                            l.configure(text="✓ OK", text_color="#2dc97e")))
-                        log_ui(f"   ✅ Чисто")
+                            c.configure(border_color="#2dc97e", fg_color="#001a0d"),
+                            l.configure(text="✓", text_color="#2dc97e")))
                 except Exception as e:
-                    log_ui(f"   [!] Ошибка: {e}")
+                    log_ui(f"  [!] {name}: {e}")
+
+            # Security Score
+            score = max(0, 100 - len(all_findings) * 15)
+            score_color = "#2dc97e" if score >= 80 else "#f39c12" if score >= 50 else "#e74c3c"
 
             threat = ("ВЫСОКАЯ" if any(f.severity == "ВЫСОКАЯ" for f in all_findings)
                       else "СРЕДНЯЯ" if any(f.severity == "СРЕДНЯЯ" for f in all_findings)
                       else "НИЗКАЯ" if all_findings else "ЧИСТАЯ")
-            color = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
-                     "НИЗКАЯ": "#f39c12", "ЧИСТАЯ": "#2dc97e"}.get(threat, "gray")
+            threat_color = {"ВЫСОКАЯ": "#e74c3c", "СРЕДНЯЯ": "#f39c12",
+                            "НИЗКАЯ": "#f39c12", "ЧИСТАЯ": "#2dc97e"}.get(threat, "gray")
 
-            log_ui(f"\n{'='*52}")
-            log_ui("  ИТОГ ROOTKIT SCAN")
-            log_ui(f"{'='*52}")
-            log_ui(f"  Проверок выполнено:  {len(check_fns)}")
-            log_ui(f"  Находок:             {len(all_findings)}")
-            log_ui(f"  Уровень угрозы:      {threat}")
+            self.after(0, lambda s=score, c=score_color: 
+                       self.rk_score_lbl.configure(text=f"{s}", text_color=c))
+            self.after(0, lambda: self.rk_status.configure(
+                text="Завершено", text_color="#2dc97e"))
+            self.after(0, lambda t=threat, c=threat_color:
+                       self.rk_threat_lbl.configure(
+                           text=f"● {t}", text_color=c))
+            self.after(0, lambda: self.rk_progress.configure(
+                progress_color=threat_color))
+
+            log_ui(f"\n{'='*50}")
+            log_ui(f"  Security Score: {score}/100")
+            log_ui(f"  Угроза: {threat}")
+            log_ui(f"  Находок: {len(all_findings)}")
             if not all_findings:
-                log_ui("\n  ✅ Система чиста. Признаков rootkit не обнаружено.")
-            log_ui(f"{'='*52}")
+                log_ui("  ✅ Система чиста")
+            log_ui(f"{'='*50}")
 
-            self.rk_status.configure(text="Завершено", text_color="#2dc97e")
-            self.rk_threat_lbl.configure(text=f"Угроза: {threat}", text_color=color)
-            self.rk_progress.set(1.0)
-            notify_threat(threat, f"Rootkit scan: {len(all_findings)} находок")
+            # System DNA
+            dna_path = Path("data/system_dna.json")
+            dna_path.parent.mkdir(exist_ok=True)
+            new_dna = {
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "score":     score,
+                "threat":    threat,
+                "findings":  len(all_findings),
+            }
+
+            if dna_path.exists():
+                old_dna = json.loads(dna_path.read_text())
+                changes = []
+                if old_dna.get("score") != score:
+                    diff = score - old_dna.get("score", 0)
+                    arrow = "↑" if diff > 0 else "↓"
+                    changes.append(f"Score: {old_dna['score']} → {score} {arrow}{abs(diff)}")
+                if old_dna.get("threat") != threat:
+                    changes.append(f"Угроза: {old_dna['threat']} → {threat}")
+                if old_dna.get("findings") != len(all_findings):
+                    changes.append(f"Находок: {old_dna['findings']} → {len(all_findings)}")
+
+                dna_text = f"Последний скан: {old_dna.get('timestamp', '—')}\n"
+                if changes:
+                    dna_text += "Изменения: " + "  |  ".join(changes)
+                else:
+                    dna_text += "Изменений не обнаружено — система стабильна ✓"
+
+                self.after(0, lambda t=dna_text: [
+                    self.rk_dna_box.configure(state="normal"),
+                    self.rk_dna_box.delete("1.0", "end"),
+                    self.rk_dna_box.insert("end", t),
+                    self.rk_dna_box.configure(state="disabled"),
+                    self.rk_dna_lbl.configure(
+                        text=f"Снимок #{len(changes)} изменений",
+                        text_color="#00d4ff" if changes else "#2dc97e"),
+                ])
+            else:
+                self.after(0, lambda: [
+                    self.rk_dna_box.configure(state="normal"),
+                    self.rk_dna_box.delete("1.0", "end"),
+                    self.rk_dna_box.insert("end", "✓ Первый снимок системы создан"),
+                    self.rk_dna_box.configure(state="disabled"),
+                    self.rk_dna_lbl.configure(text="Новый baseline", text_color="#00d4ff"),
+                ])
+
+            dna_path.write_text(json.dumps(new_dna, ensure_ascii=False))
+
+            # AI панель
+            rk_insight = {
+                "model": "Rootkit Scanner",
+                "desc":  "",
+                "metrics": [
+                    ("Security Score", f"{score}/100"),
+                    ("Угроза",         threat),
+                    ("Находок",        str(len(all_findings))),
+                ]
+            }
+            self.after(0, lambda i=rk_insight: self._show_rk_ai_panel(i, all_findings))
+            if not getattr(self, "_parallel_scan", False): notify_threat(threat, f"Rootkit scan: {len(all_findings)} находок, score: {score}")
 
         except Exception as e:
             log_ui(f"[!] Ошибка: {e}")
@@ -1127,36 +2090,113 @@ class RootkitGuard(ctk.CTk):
 
         self.rk_output.configure(state="disabled")
 
-    def _run_rootkit_api(self):
-        self.rk_output.configure(state="normal")
-        self.rk_output.delete("1.0", "end")
-
-        def log_ui(msg):
-            self.rk_output.insert("end", msg + "\n")
-            self.rk_output.see("end")
-
+    def _show_rk_ai_panel(self, insight: dict, findings: list):
         try:
-            self.rk_status.configure(text="Запрос к API...", text_color="yellow")
-            log_ui("[*] POST /rootkit/scan ...")
-            resp = requests.post(f"{API_BASE}/rootkit/scan", timeout=30)
-            if resp.status_code == 200:
-                data  = resp.json()
-                threat = data.get("threat_level", "—")
-                color  = {"ВЫСОКАЯ":"#e74c3c","СРЕДНЯЯ":"#f39c12",
-                          "ЧИСТАЯ":"#2dc97e"}.get(threat, "gray")
-                log_ui(f"[+] Угроза: {threat}")
-                log_ui(f"[+] Находок: {data.get('findings_count', 0)}")
-                for f in data.get("findings", []):
-                    log_ui(f"  [{f['severity']}] {f['description']}")
-                self.rk_status.configure(text="Готово (API)", text_color="#2dc97e")
-                self.rk_threat_lbl.configure(text=f"Угроза: {threat}", text_color=color)
-            else:
-                log_ui(f"[!] API ошибка: {resp.status_code}")
-        except Exception as e:
-            log_ui(f"[!] API недоступен: {e}")
-            log_ui("[*] Нажми ▶ в боковой панели чтобы запустить API")
+            self.rk_ai_frame.pack(fill="x", padx=16, pady=(0, 6))
+            for w in self.rk_ai_frame.winfo_children():
+                w.destroy()
+        except Exception:
+            return
 
-        self.rk_output.configure(state="disabled")
+        # Если есть находки — показываем что делать
+        if findings:
+            ctk.CTkLabel(self.rk_ai_frame,
+                         text="🛡  Рекомендации по устранению",
+                         font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color="#e74c3c").pack(anchor="w", padx=12, pady=(8, 4))
+            rec_map = {
+                "Скрытые процессы":  "kill -9 <PID>  # завершить подозрительный процесс",
+                "Модули ядра":       "rmmod <module>  # выгрузить подозрительный модуль",
+                "LD_PRELOAD":        "unset LD_PRELOAD  # убрать инъекцию",
+                "Подозр. порты":     "iptables -A INPUT -p tcp --dport <PORT> -j DROP",
+                "Системные файлы":   "apt install --reinstall <package>  # переустановить",
+                "Привилегии":        "chmod 755 <file>  # исправить права доступа",
+            }
+            for f in findings[:3]:
+                desc = f.description
+                cmd = None
+                for key, val in rec_map.items():
+                    if key.lower() in desc.lower():
+                        cmd = val
+                        break
+                if cmd:
+                    row = ctk.CTkFrame(self.rk_ai_frame, fg_color="#0a0e1a",
+                                       corner_radius=6)
+                    row.pack(fill="x", padx=12, pady=2)
+                    ctk.CTkLabel(row, text=f"⚠ {desc[:50]}",
+                                 font=ctk.CTkFont(size=10),
+                                 text_color="#94a3b8").pack(anchor="w", padx=8, pady=(4, 0))
+                    ctk.CTkLabel(row, text=f"$ {cmd}",
+                                 font=ctk.CTkFont(family="monospace", size=10),
+                                 text_color="#00d4ff").pack(anchor="w", padx=8, pady=(0, 4))
+
+        # AI кнопка
+        self._rk_ai_result = ctk.CTkTextbox(
+            self.rk_ai_frame, height=0,
+            font=ctk.CTkFont(size=11),
+            fg_color="transparent", text_color="#94a3b8", wrap="word")
+        self._rk_ai_result.pack(fill="x", padx=12, pady=(4, 0))
+        self._rk_ai_result.pack_forget()
+
+        ctk.CTkButton(
+            self.rk_ai_frame,
+            text=t("ask_ai"),
+            height=34, corner_radius=8,
+            fg_color="#1e293b", hover_color="#2d3748",
+            font=ctk.CTkFont(size=12),
+            command=lambda i=insight, f=findings: threading.Thread(
+                target=self._rk_ai_analyze, args=(i, f), daemon=True).start()
+        ).pack(fill="x", padx=12, pady=(4, 8))
+
+    def _rk_ai_analyze(self, insight: dict, findings: list):
+        try:
+            import anthropic
+            self.after(0, lambda: [
+                self._rk_ai_result.configure(height=100),
+                self._rk_ai_result.pack(fill="x", padx=12, pady=(4, 0)),
+                self._rk_ai_result.configure(state="normal"),
+                self._rk_ai_result.delete("1.0", "end"),
+                self._rk_ai_result.insert("end", t("ai_analyzing")),
+                self._rk_ai_result.configure(state="disabled"),
+            ])
+            api_key = cfg.get("anthropic", {}).get("api_key", "")
+            client  = anthropic.Anthropic(api_key=api_key)
+            lang_map = {"ru": "русском", "en": "английском", "kz": "қазақ тілінде"}
+            lang = lang_map.get(get_lang(), "русском")
+            findings_text = "\n".join([f"- [{f.severity}] {f.description}" 
+                                        for f in findings]) if findings else "Находок нет"
+            prompt = f"""Ты эксперт по кибербезопасности Linux. Результаты Rootkit Scan:
+
+Security Score: {insight['metrics'][0][1]}
+Угроза: {insight['metrics'][1][1]}
+Находок: {insight['metrics'][2][1]}
+
+Обнаруженные угрозы:
+{findings_text}
+
+Напиши краткий анализ (3-4 предложения) на {lang} языке:
+1. Что обнаружено
+2. Насколько критично
+3. Конкретные шаги для защиты"""
+
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=400,
+                messages=[{"role": "user", "content": prompt}])
+            result = message.content[0].text
+            self.after(0, lambda r=result: [
+                self._rk_ai_result.configure(state="normal", height=130),
+                self._rk_ai_result.delete("1.0", "end"),
+                self._rk_ai_result.insert("end", f"🤖 {r}"),
+                self._rk_ai_result.configure(state="disabled"),
+            ])
+        except Exception as e:
+            self.after(0, lambda err=str(e): [
+                self._rk_ai_result.configure(state="normal"),
+                self._rk_ai_result.delete("1.0", "end"),
+                self._rk_ai_result.insert("end", f"{t('ai_error')}: {err}"),
+                self._rk_ai_result.configure(state="disabled"),
+            ])
 
     # ── Мониторинг ───────────────────────────────────────────────
 
@@ -1268,114 +2308,303 @@ class RootkitGuard(ctk.CTk):
 
     def _page_analytics(self):
         frame = ctk.CTkFrame(self.main, fg_color="transparent")
-        ctk.CTkLabel(frame, text="Аналитика моделей",
-                     font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(10, 10))
+
+        # Заголовок
+        hdr = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                            border_width=1, border_color="#1e293b")
+        hdr.pack(fill="x", padx=16, pady=(8, 6))
+        hdr.configure(height=52)
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text=f"📊  {t('analytics_title')}",
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="#00d4ff").pack(side="left", padx=16, pady=14)
+
+        # Карточки сверху
+        top_cards = ctk.CTkFrame(frame, fg_color="transparent")
+        top_cards.pack(fill="x", padx=16, pady=(0, 6))
+        for i, (title, val, sub, color) in enumerate([
+            (t("best_model"),  "XGBoost",        "ROC-AUC: 1.0000",  "#a855f7"),
+            (t("dataset"),        "CIC-IDS2018",     "1,044,525 записей","#0ea5e9"),
+            (t("accuracy"),       "99.99%",          "F1-score",         "#2dc97e"),
+            (t("features"),      "78",              t("net_features"),"#f59e0b"),
+        ]):
+            top_cards.grid_columnconfigure(i, weight=1)
+            card = ctk.CTkFrame(top_cards, fg_color="#0d1117", corner_radius=10,
+                                border_width=1, border_color="#1e293b", height=80)
+            card.grid(row=0, column=i, padx=4, sticky="ew")
+            card.grid_propagate(False)
+            stripe = ctk.CTkFrame(card, fg_color=color, width=4, corner_radius=0)
+            stripe.pack(side="left", fill="y")
+            inner = ctk.CTkFrame(card, fg_color="transparent")
+            inner.pack(side="left", padx=10, pady=8)
+            ctk.CTkLabel(inner, text=title, font=ctk.CTkFont(size=10),
+                         text_color=color, anchor="w").pack(anchor="w")
+            ctk.CTkLabel(inner, text=val,
+                         font=ctk.CTkFont(size=16, weight="bold"),
+                         text_color="white", anchor="w").pack(anchor="w")
+            ctk.CTkLabel(inner, text=sub, font=ctk.CTkFont(size=9),
+                         text_color="#475569", anchor="w").pack(anchor="w")
 
         # Таблица метрик
-        tbl = ctk.CTkFrame(frame, fg_color="#1a1a2e", corner_radius=10)
-        tbl.pack(fill="x", padx=20, pady=5)
-        hdr = ctk.CTkFrame(tbl, fg_color="#1f538d", corner_radius=0)
-        hdr.pack(fill="x")
-        for col, w in [("Модель",180),("F1",90),("ROC-AUC",90),("FPR",80),("FNR",80),("Тип",110)]:
-            ctk.CTkLabel(hdr, text=col, width=w,
-                         font=ctk.CTkFont(size=12, weight="bold"),
-                         text_color="white").pack(side="left", padx=6, pady=8)
+        tbl = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                            border_width=1, border_color="#1e293b")
+        tbl.pack(fill="x", padx=16, pady=(0, 6))
+        hdr2 = ctk.CTkFrame(tbl, fg_color="#0a0e1a", corner_radius=0)
+        hdr2.pack(fill="x")
+        for col, w in [("Модель",180),("F1",90),("ROC-AUC",90),
+                       ("FPR",80),("FNR",80),("Тип",110)]:
+            ctk.CTkLabel(hdr2, text=col, width=w,
+                         font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color="#475569").pack(side="left", padx=6, pady=8)
+
         rows = [
-            ("Random Forest",    "1.0000","0.9999","0.0001","0.0001","Supervised", "#1f538d"),
-            ("XGBoost",          "1.0000","1.0000","0.0000","0.0001","Supervised", "#2d6a4f"),
-            ("Isolation Forest", "0.0200","0.3258","0.3666","0.9818","Unsupervised","#7a4520"),
-            ("Ensemble",         "1.0000","0.9999","0.0000","0.0001","Hybrid",     "#6d3a9c"),
+            ("Random Forest",    "1.0000","0.9999","0.0001","0.0001","Supervised", "#0ea5e9"),
+            ("XGBoost",          "1.0000","1.0000","0.0000","0.0001","Supervised", "#a855f7"),
+            ("Isolation Forest", "0.0200","0.3258","0.3666","0.9818","Unsupervised","#f59e0b"),
+            ("Ensemble",         "1.0000","0.9999","0.0000","0.0001","Hybrid",     "#00ff88"),
         ]
         for model, f1, roc, fpr, fnr, typ, color in rows:
-            r = ctk.CTkFrame(tbl, fg_color="#1e1e2e", corner_radius=0)
+            r = ctk.CTkFrame(tbl, fg_color="#0d1117", corner_radius=0,
+                             border_width=0)
             r.pack(fill="x")
-            ctk.CTkLabel(r, text=model, width=180,
+            ctk.CTkFrame(r, fg_color=color, width=3, corner_radius=0
+                         ).pack(side="left", fill="y")
+            ctk.CTkLabel(r, text=model, width=177,
                          font=ctk.CTkFont(size=12, weight="bold"),
                          text_color=color).pack(side="left", padx=6, pady=8)
             for val, w in [(f1,90),(roc,90),(fpr,80),(fnr,80),(typ,110)]:
                 ctk.CTkLabel(r, text=val, width=w,
-                             font=ctk.CTkFont(size=12)).pack(side="left", padx=6)
+                             font=ctk.CTkFont(size=11),
+                             text_color="#94a3b8").pack(side="left", padx=6)
 
-        # Бары F1
-        ctk.CTkLabel(frame, text="F1-score (визуализация)",
-                     font=ctk.CTkFont(size=14, weight="bold")).pack(pady=(14, 6))
-        bar_frame = ctk.CTkFrame(frame, fg_color="#1a1a2e", corner_radius=10)
-        bar_frame.pack(fill="x", padx=20, pady=5)
+        # F1 бары
+        bar_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                  border_width=1, border_color="#1e293b")
+        bar_frame.pack(fill="x", padx=16, pady=(0, 6))
+        ctk.CTkLabel(bar_frame, text="F1-score",
+                     font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color="#475569").pack(anchor="w", padx=12, pady=(8, 4))
         for model, val, color in [
-            ("Random Forest",    1.00, "#1f538d"),
-            ("XGBoost",          1.00, "#2d6a4f"),
-            ("Isolation Forest", 0.02, "#e74c3c"),
-            ("Ensemble",         1.00, "#6d3a9c"),
+            ("Random Forest",    1.00, "#0ea5e9"),
+            ("XGBoost",          1.00, "#a855f7"),
+            ("Isolation Forest", 0.02, "#f59e0b"),
+            ("Ensemble",         1.00, "#00ff88"),
         ]:
             r = ctk.CTkFrame(bar_frame, fg_color="transparent")
-            r.pack(fill="x", padx=10, pady=4)
-            ctk.CTkLabel(r, text=model, width=160, anchor="w",
-                         font=ctk.CTkFont(size=12)).pack(side="left")
-            bg = ctk.CTkFrame(r, fg_color="#2b2b2b", corner_radius=6,
-                               height=22, width=380)
-            bg.pack(side="left", padx=6)
+            r.pack(fill="x", padx=12, pady=3)
+            ctk.CTkLabel(r, text=model, width=150, anchor="w",
+                         font=ctk.CTkFont(size=11),
+                         text_color="#64748b").pack(side="left")
+            bg = ctk.CTkFrame(r, fg_color="#1e293b", corner_radius=4,
+                               height=16, width=400)
+            bg.pack(side="left", padx=8)
             bg.pack_propagate(False)
-            fill = ctk.CTkFrame(bg, fg_color=color, corner_radius=6,
-                                 height=22, width=max(int(380*val), 6))
-            fill.place(x=0, y=0)
-            ctk.CTkLabel(r, text=f"{val:.4f}", width=60,
-                         font=ctk.CTkFont(size=12, weight="bold"),
+            ctk.CTkFrame(bg, fg_color=color, corner_radius=4,
+                          height=16, width=max(int(400*val), 4)
+                         ).place(x=0, y=0)
+            ctk.CTkLabel(r, text=f"{val:.4f}",
+                         font=ctk.CTkFont(size=11, weight="bold"),
                          text_color=color).pack(side="left")
 
-        # Инфо
-        info = ctk.CTkFrame(frame, fg_color="#1a1a2e", corner_radius=10)
-        info.pack(fill="x", padx=20, pady=10)
-        for key, val in [
-            ("Датасет",  "CIC-IDS2018 — 1,044,525 записей"),
-            ("Классы",   "Benign: 758,334 (72.5%)  |  Bot: 286,191 (27.5%)"),
-            ("Признаки", "78 сетевых признаков"),
-            ("Обучение", "80/20 stratified split, RandomState=42"),
+        # Когда использовать
+        guide = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                              border_width=1, border_color="#1e293b")
+        guide.pack(fill="x", padx=16, pady=(0, 10))
+        ctk.CTkLabel(guide, text=t("when_to_use"),
+                     font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color="#475569").pack(anchor="w", padx=12, pady=(8, 4))
+        for model, desc, color in [
+            ("RF",  t("rf_when"), "#0ea5e9"),
+            ("XGB", t("xgb_when"), "#a855f7"),
+            ("ISO", t("iso_when"),     "#f59e0b"),
+            ("ALL", t("all_when"),      "#00ff88"),
         ]:
-            r = ctk.CTkFrame(info, fg_color="transparent")
-            r.pack(fill="x", padx=12, pady=3)
-            ctk.CTkLabel(r, text=f"{key}:", width=100, anchor="w",
-                         font=ctk.CTkFont(weight="bold"),
-                         text_color="#85B7EB").pack(side="left")
-            ctk.CTkLabel(r, text=val, anchor="w").pack(side="left")
-        return frame
+            r = ctk.CTkFrame(guide, fg_color="#0a0e1a", corner_radius=6)
+            r.pack(fill="x", padx=12, pady=2)
+            ctk.CTkLabel(r, text=model, width=50,
+                         font=ctk.CTkFont(size=11, weight="bold"),
+                         text_color=color).pack(side="left", padx=8, pady=6)
+            ctk.CTkLabel(r, text=desc,
+                         font=ctk.CTkFont(size=11),
+                         text_color="#64748b").pack(side="left")
 
+        ctk.CTkLabel(guide, text="",).pack(pady=4)
+        return frame
     # ── Отчёт ────────────────────────────────────────────────────
 
     def _page_report(self):
         frame = ctk.CTkFrame(self.main, fg_color="transparent")
-        ctk.CTkLabel(frame, text="Генерация отчёта",
-                     font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(10, 5))
+
+        # Заголовок
+        hdr = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                            border_width=1, border_color="#1e293b", height=52)
+        hdr.pack(fill="x", padx=16, pady=(8, 6))
+        hdr.pack_propagate(False)
+        ctk.CTkLabel(hdr, text="📄  ОТЧЁТ",
+                     font=ctk.CTkFont(size=14, weight="bold"),
+                     text_color="#00d4ff").pack(side="left", padx=16, pady=14)
 
         # Инфо о последнем скане
-        info_frame = ctk.CTkFrame(frame, fg_color="#1a2a1a", corner_radius=10)
-        info_frame.pack(fill="x", padx=20, pady=5)
+        info_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                   border_width=1, border_color="#1e293b")
+        info_frame.pack(fill="x", padx=16, pady=(0, 6))
+        info_inner = ctk.CTkFrame(info_frame, fg_color="transparent")
+        info_inner.pack(fill="x", padx=12, pady=10)
+        ctk.CTkLabel(info_inner, text="Последний скан:",
+                     font=ctk.CTkFont(size=10), text_color="#475569").pack(anchor="w")
         self.report_info_lbl = ctk.CTkLabel(
-            info_frame,
-            text="Последний скан: нет данных. Сначала выполни сканирование.",
-            text_color="#85B7EB", font=ctk.CTkFont(size=12))
-        self.report_info_lbl.pack(padx=12, pady=8, anchor="w")
+            info_inner,
+            text="Нет данных. Сначала выполни сканирование.",
+            text_color="#64748b", font=ctk.CTkFont(size=12))
+        self.report_info_lbl.pack(anchor="w", pady=(2, 0))
 
-        btn_row = ctk.CTkFrame(frame, fg_color="transparent")
-        btn_row.pack(pady=8)
-        ctk.CTkButton(btn_row, text="📄  Текстовый (.txt)", height=42, width=190,
-                      command=self._gen_text_report).pack(side="left", padx=8)
-        ctk.CTkButton(btn_row, text="📕  PDF (ReportLab)", height=42, width=190,
-                      fg_color="#7a1e1e",
+        # Кнопки экспорта
+        btn_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                  border_width=1, border_color="#1e293b")
+        btn_frame.pack(fill="x", padx=16, pady=(0, 6))
+        ctk.CTkLabel(btn_frame, text="Экспорт:",
+                     font=ctk.CTkFont(size=10), text_color="#475569"
+                     ).pack(anchor="w", padx=12, pady=(8, 4))
+        btns = ctk.CTkFrame(btn_frame, fg_color="transparent")
+        btns.pack(fill="x", padx=12, pady=(0, 10))
+
+        ctk.CTkButton(btns, text="📄  TXT",
+                      height=38, width=120, corner_radius=8,
+                      fg_color="#1e293b", hover_color="#2d3748",
+                      font=ctk.CTkFont(size=12),
+                      command=self._gen_text_report
+                      ).pack(side="left", padx=(0, 6))
+
+        ctk.CTkButton(btns, text="📕  PDF",
+                      height=38, width=120, corner_radius=8,
+                      fg_color="#7a1e1e", hover_color="#c0392b",
+                      font=ctk.CTkFont(size=12),
                       command=lambda: threading.Thread(
                           target=self._gen_pdf_report, daemon=True).start()
-                      ).pack(side="left", padx=8)
-        ctk.CTkButton(btn_row, text="🔄  Обновить инфо", height=42, width=160,
-                      fg_color="transparent", border_width=1,
-                      command=self._update_report_info).pack(side="left", padx=8)
+                      ).pack(side="left", padx=(0, 6))
+
+        ctk.CTkButton(btns, text="🔄  Обновить",
+                      height=38, width=120, corner_radius=8,
+                      fg_color="transparent", hover_color="#1e293b",
+                      border_width=1, border_color="#2d3748",
+                      font=ctk.CTkFont(size=12),
+                      command=self._update_report_info
+                      ).pack(side="left", padx=(0, 6))
+
+        ctk.CTkButton(btns, text="🤖  AI Отчёт",
+                      height=38, width=140, corner_radius=8,
+                      fg_color="#0ea5e9", hover_color="#0284c7",
+                      text_color="#000000",
+                      font=ctk.CTkFont(size=12, weight="bold"),
+                      command=lambda: threading.Thread(
+                          target=self._gen_ai_report, daemon=True).start()
+                      ).pack(side="left")
 
         self.report_status = ctk.CTkLabel(frame, text="",
                                            text_color="#2dc97e",
-                                           font=ctk.CTkFont(size=12))
-        self.report_status.pack()
+                                           font=ctk.CTkFont(size=11))
+        self.report_status.pack(anchor="w", padx=16)
+
+        # Превью отчёта
+        preview_frame = ctk.CTkFrame(frame, fg_color="#0d1117", corner_radius=12,
+                                      border_width=1, border_color="#1e293b")
+        preview_frame.pack(fill="both", expand=True, padx=16, pady=(0, 10))
+        ctk.CTkLabel(preview_frame, text="Превью",
+                     font=ctk.CTkFont(size=10), text_color="#475569"
+                     ).pack(anchor="w", padx=12, pady=(8, 4))
         self.report_box = ctk.CTkTextbox(
-            frame, font=ctk.CTkFont(family="monospace", size=12))
-        self.report_box.pack(fill="both", expand=True, padx=20, pady=8)
+            preview_frame,
+            font=ctk.CTkFont(family="monospace", size=11),
+            fg_color="transparent", text_color="#94a3b8")
+        self.report_box.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         return frame
+
+    def _gen_ai_report(self):
+        try:
+            import anthropic
+            self.after(0, lambda: [
+                self.report_status.configure(
+                    text="🤖 AI генерирует отчёт...", text_color="yellow"),
+                self.report_box.configure(state="normal"),
+                self.report_box.delete("1.0", "end"),
+                self.report_box.insert("end", "Генерирую профессиональный отчёт...\n"),
+                self.report_box.configure(state="disabled"),
+            ])
+            s = self._last_scan
+            if s["total"] == 0:
+                self.after(0, lambda: self.report_status.configure(
+                    text="Сначала выполни сканирование", text_color="#e74c3c"))
+                return
+
+            api_key = cfg.get("anthropic", {}).get("api_key", "")
+            client  = anthropic.Anthropic(api_key=api_key)
+            lang_map = {"ru": "русском", "en": "английском", "kz": "қазақ тілінде"}
+            lang = lang_map.get(get_lang(), "русском")
+
+            prompt = f"""Ты эксперт по кибербезопасности. Напиши профессиональный отчёт о результатах сканирования сети.
+
+Данные сканирования:
+- Файл: {s.get('filename', '—')}
+- Время: {s.get('timestamp', '—')}
+- Всего записей: {s.get('total', 0):,}
+- Нормальных: {s.get('normal', 0):,}
+- Аномалий: {s.get('anomaly', 0):,} ({s.get('pct', 0):.1f}%)
+- Уровень угрозы: {s.get('threat', '—')}
+- Атакованные порты: {s.get('top_ports', [])}
+- Макс. вероятность: {s.get('max_proba', 0):.4f}
+
+Напиши структурированный отчёт на {lang} языке со следующими разделами:
+
+1. EXECUTIVE SUMMARY (2-3 предложения)
+2. ОБНАРУЖЕННЫЕ УГРОЗЫ (детали атак, порты, тип трафика)
+3. ОЦЕНКА РИСКА (уровень критичности, потенциальный ущерб)
+4. РЕКОМЕНДАЦИИ (конкретные шаги, команды)
+5. ЗАКЛЮЧЕНИЕ
+
+Стиль: профессиональный, технический. Используй цифры из данных."""
+
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=800,
+                messages=[{"role": "user", "content": prompt}])
+
+            result = message.content[0].text
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            full_report = f"""
+╔══════════════════════════════════════════════════════════╗
+║         ROOTKITGUARD — AI SECURITY REPORT               ║
+╚══════════════════════════════════════════════════════════╝
+  Сгенерировано: {ts}
+  Файл: {s.get('filename', '—')}
+  Версия: RootkitGuard v2.1 | Claude AI
+══════════════════════════════════════════════════════════
+
+{result}
+
+══════════════════════════════════════════════════════════
+  IITU
+"""
+            # Сохраняем
+            from pathlib import Path
+            Path("reports").mkdir(exist_ok=True)
+            out_name = self._unique_name("txt")
+            Path(f"reports/ai_{out_name}").write_text(full_report, encoding="utf-8")
+
+            self.after(0, lambda r=full_report: [
+                self.report_box.configure(state="normal"),
+                self.report_box.delete("1.0", "end"),
+                self.report_box.insert("end", r),
+                self.report_box.configure(state="disabled"),
+                self.report_status.configure(
+                    text=f"✓ AI отчёт сохранён: reports/ai_{out_name}",
+                    text_color="#2dc97e"),
+            ])
+
+        except Exception as e:
+            self.after(0, lambda err=str(e): [
+                self.report_status.configure(
+                    text=f"Ошибка AI: {err}", text_color="#e74c3c"),
+            ])
 
     def _update_report_info(self):
         s = self._last_scan
@@ -1434,7 +2663,7 @@ class RootkitGuard(ctk.CTk):
    else '⚡ Рекомендуется усиленный мониторинг' if s['threat']=='СРЕДНЯЯ'
    else '✅ Система работает в штатном режиме'}
 ──────────────────────────────────────────────────────────
-  МУИТ · Алматы · 2026 · Alin G.T.
+  IITU
 """
         self.report_box.insert("end", rpt)
         self.report_box.configure(state="disabled")

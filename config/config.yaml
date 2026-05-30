@@ -48,3 +48,6 @@ scan:
   threat_high_pct: 20.0
   threat_mid_pct: 5.0
   threshold: 0.5
+anthropic:
+  api_key: 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
+  model: claude-haiku-4-5-20251001

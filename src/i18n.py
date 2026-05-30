@@ -179,3 +179,153 @@ _extra = {
 }
 for lang, keys in _extra.items():
     TRANSLATIONS[lang].update(keys)
+
+_scan_keys = {
+    "ru": {
+        "file_label": "📂  Файл:", "via_api": "Через API",
+        "waiting": "Выбери файл и нажми ЗАПУСТИТЬ",
+        "scan_details": "📋  Детали сканирования", "history": "🕐  История",
+        "no_scans": "Нет сканирований", "create_pdf": "📕  Создать PDF отчёт",
+        "run_scan": "▶  ЗАПУСТИТЬ АНАЛИЗ",
+    },
+    "en": {
+        "file_label": "📂  File:", "via_api": "Via API",
+        "waiting": "Select file and press RUN",
+        "scan_details": "📋  Scan Details", "history": "🕐  History",
+        "no_scans": "No scans yet", "create_pdf": "📕  Create PDF Report",
+        "run_scan": "▶  RUN ANALYSIS",
+    },
+    "kz": {
+        "file_label": "📂  Файл:", "via_api": "API арқылы",
+        "waiting": "Файлды таңдап ІСКЕ ҚОСУ батырмасын басыңыз",
+        "scan_details": "📋  Сканерлеу мәліметтері", "history": "🕐  Тарих",
+        "no_scans": "Сканерлеу жоқ", "create_pdf": "📕  PDF есеп жасау",
+        "run_scan": "▶  ТАЛДАУДЫ ІСКЕ ҚОСУ",
+    },
+}
+for lang, keys in _scan_keys.items():
+    TRANSLATIONS[lang].update(keys)
+
+_extra2 = {
+    "ru": {"threshold": "Порог", "default_rows": "Строк", "browse": "Обзор"},
+    "en": {"threshold": "Threshold", "default_rows": "Rows", "browse": "Browse"},
+    "kz": {"threshold": "Шек", "default_rows": "Жолдар", "browse": "Шолу"},
+}
+for lang, keys in _extra2.items():
+    TRANSLATIONS[lang].update(keys)
+
+
+_ai_keys = {
+
+    "ru": {"🤖  Спросить AI": "✦  AI Анализ", "ai_analyzing": "Анализирую...", "ai_error": "Ошибка AI"},
+
+    "en": {"🤖  Спросить AI": "✦  AI Analysis", "ai_analyzing": "Analyzing...", "ai_error": "AI Error"},
+
+    "kz": {"🤖  Спросить AI": "✦  AI Талдау", "ai_analyzing": "Талдауда...", "ai_error": "AI Қатесі"},
+
+}
+
+for lang, keys in _ai_keys.items():
+
+    TRANSLATIONS[lang].update(keys)
+
+
+_rk_keys = {
+    "ru": {
+        "ask_ai": "✦  AI Анализ",
+        "ai_analyzing": "Анализирую...",
+        "ai_error": "Ошибка AI",
+        "rk_run": "▶  Запустить",
+        "rk_done": "Завершено",
+        "rk_ready": "Готов к сканированию",
+        "rk_scanning": "Сканирование...",
+        "security_score": "Security Score",
+        "system_dna": "System DNA",
+        "new_baseline": "Новый baseline",
+        "no_changes": "Изменений не обнаружено — система стабильна ✓",
+        "first_snapshot": "✓ Первый снимок системы создан",
+        "recommendations": "🛡  Рекомендации по устранению",
+        "rk_clean": "✅ Система чиста",
+    },
+    "en": {
+        "ask_ai": "✦  AI Analysis",
+        "ai_analyzing": "Analyzing...",
+        "ai_error": "AI Error",
+        "rk_run": "▶  Run Scan",
+        "rk_done": "Completed",
+        "rk_ready": "Ready to scan",
+        "rk_scanning": "Scanning...",
+        "security_score": "Security Score",
+        "system_dna": "System DNA",
+        "new_baseline": "New baseline",
+        "no_changes": "No changes detected — system stable ✓",
+        "first_snapshot": "✓ First system snapshot created",
+        "recommendations": "🛡  Remediation Steps",
+        "rk_clean": "✅ System is clean",
+    },
+    "kz": {
+        "ask_ai": "✦  AI Талдау",
+        "ai_analyzing": "Талдауда...",
+        "ai_error": "AI Қатесі",
+        "rk_run": "▶  Іске қосу",
+        "rk_done": "Аяқталды",
+        "rk_ready": "Сканерлеуге дайын",
+        "rk_scanning": "Сканерлеуде...",
+        "security_score": "Қауіпсіздік балы",
+        "system_dna": "Жүйе ДНҚ",
+        "new_baseline": "Жаңа baseline",
+        "no_changes": "Өзгерістер жоқ — жүйе тұрақты ✓",
+        "first_snapshot": "✓ Жүйенің бірінші суреті жасалды",
+        "recommendations": "🛡  Жою бойынша ұсыныстар",
+        "rk_clean": "✅ Жүйе таза",
+    },
+}
+for lang, keys in _rk_keys.items():
+    TRANSLATIONS[lang].update(keys)
+
+_analytics_keys = {
+    "ru": {
+        "analytics_title":  "АНАЛИТИКА МОДЕЛЕЙ",
+        "best_model":       "Лучшая модель",
+        "dataset":          "Датасет",
+        "accuracy":         "Точность",
+        "features":         "Признаков",
+        "net_features":     "сетевых признаков",
+        "f1_viz":           "F1-score",
+        "when_to_use":      "Когда использовать каждую модель",
+        "rf_when":          "Универсальный выбор. Быстро, точно, стабильно.",
+        "xgb_when":         "Когда важна максимальная точность и есть время.",
+        "iso_when":         "Когда нет меток. Новые неизвестные угрозы.",
+        "all_when":         "Критические системы где нельзя ошибиться.",
+    },
+    "en": {
+        "analytics_title":  "MODEL ANALYTICS",
+        "best_model":       "Best model",
+        "dataset":          "Dataset",
+        "accuracy":         "Accuracy",
+        "features":         "Features",
+        "net_features":     "network features",
+        "f1_viz":           "F1-score",
+        "when_to_use":      "When to use each model",
+        "rf_when":          "Universal choice. Fast, accurate, stable.",
+        "xgb_when":         "When maximum accuracy matters and time allows.",
+        "iso_when":         "When no labels available. New unknown threats.",
+        "all_when":         "Critical systems where errors are unacceptable.",
+    },
+    "kz": {
+        "analytics_title":  "МОДЕЛЬ АНАЛИТИКАСЫ",
+        "best_model":       "Үздік модель",
+        "dataset":          "Деректер жинағы",
+        "accuracy":         "Дәлдік",
+        "features":         "Белгілер",
+        "net_features":     "желілік белгілер",
+        "f1_viz":           "F1-score",
+        "when_to_use":      "Әр модельді қашан қолдану керек",
+        "rf_when":          "Әмбебап таңдау. Жылдам, дәл, тұрақты.",
+        "xgb_when":         "Максималды дәлдік қажет болғанда.",
+        "iso_when":         "Белгілер жоқ кезде. Жаңа белгісіз қауіптер.",
+        "all_when":         "Қателікке жол берілмейтін маңызды жүйелер.",
+    },
+}
+for lang, keys in _analytics_keys.items():
+    TRANSLATIONS[lang].update(keys)
